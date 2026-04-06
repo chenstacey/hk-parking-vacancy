@@ -78,6 +78,10 @@ const STRINGS = {
     autoRefresh: '每60秒自動更新',
     openStatus: '開放中', closedStatus: '已關閉', loadingStatus: '載入中',
     favourite: '收藏',
+    // Map
+    viewDetails: '查看詳情', privateCar: '私家車',
+    mapLoading: '地圖載入中…', mapError: '無法載入地圖數據',
+    spaces: '個空位',
   },
   en: {
     // Vacancy status
@@ -119,6 +123,10 @@ const STRINGS = {
     autoRefresh: 'Auto-refresh every 60s',
     openStatus: 'Open', closedStatus: 'Closed', loadingStatus: 'Loading',
     favourite: 'Favourite',
+    // Map
+    viewDetails: 'View Details', privateCar: 'Private Car',
+    mapLoading: 'Loading map data…', mapError: 'Unable to load map data',
+    spaces: ' spaces',
   },
 };
 
