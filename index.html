@@ -5,271 +5,121 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <title>中山紀念公園停車場</title>
+  <title>香港停車場</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
-      -webkit-tap-highlight-color: transparent;
-    }
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-    .spinning { animation: spin 0.6s linear infinite; }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .fade-in { animation: fadeIn 0.3s ease-out forwards; }
-
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
-    .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
-  </style>
+  <script src="app.js"></script>
+  <style id="shared-style"></style>
 </head>
 <body class="bg-gray-50 min-h-screen">
 
-  <!-- Sticky header -->
-  <header class="bg-white border-b border-gray-100 sticky top-0 z-10">
-    <div class="max-w-md mx-auto px-4 py-3 flex items-start justify-between gap-3">
-      <div class="min-w-0">
-        <h1 class="text-base font-bold text-gray-900 leading-tight">中山紀念公園停車場</h1>
-        <p class="text-xs text-gray-400 mt-0.5">西營盤東邊街北16號</p>
-      </div>
-      <div id="status-badge" class="shrink-0 flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-medium px-2.5 py-1.5 rounded-full mt-0.5">
-        <span class="w-1.5 h-1.5 rounded-full bg-green-500 pulse-dot"></span>
-        <span>開放中</span>
-      </div>
-    </div>
-    <!-- Countdown progress bar -->
-    <div class="h-0.5 bg-gray-100">
-      <div id="countdown-bar" class="h-full bg-blue-400 transition-none" style="width: 100%"></div>
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-100">
+    <div class="max-w-md mx-auto px-4 py-4">
+      <p class="text-xs text-gray-400 font-medium tracking-wide uppercase">香港</p>
+      <h1 class="text-xl font-bold text-gray-900 mt-0.5">停車場空位</h1>
     </div>
   </header>
 
-  <main class="max-w-md mx-auto px-4 py-4 space-y-3">
+  <main class="max-w-md mx-auto px-4 py-4 space-y-5">
 
-    <!-- Last update row -->
-    <div class="flex items-center justify-between">
-      <p class="text-xs text-gray-400" id="last-update">載入中…</p>
-      <button
-        id="refresh-btn"
-        onclick="manualRefresh()"
-        class="flex items-center gap-1 text-xs text-blue-500 active:text-blue-700 font-medium py-1 px-2 -mr-2"
-      >
-        <span id="refresh-icon" class="text-sm leading-none">↻</span>
-        立即更新
-      </button>
+    <!-- Search shortcut -->
+    <a href="list.html" class="flex items-center gap-3 bg-white rounded-2xl px-4 py-3 shadow-sm active:bg-gray-50 transition-colors">
+      <span class="text-gray-300">🔍</span>
+      <span class="text-sm text-gray-400">搜索停車場名稱或地址…</span>
+    </a>
+
+    <!-- Quick links -->
+    <div class="grid grid-cols-2 gap-3">
+      <a href="list.html" class="bg-blue-500 rounded-2xl p-4 text-white active:bg-blue-600 transition-colors">
+        <p class="text-2xl mb-1">☰</p>
+        <p class="text-sm font-semibold">全部列表</p>
+        <p class="text-xs text-blue-200 mt-0.5">搜索 · 篩選地區</p>
+      </a>
+      <a href="map.html" class="bg-white rounded-2xl p-4 text-gray-700 shadow-sm active:bg-gray-50 transition-colors">
+        <p class="text-2xl mb-1">◎</p>
+        <p class="text-sm font-semibold">地圖視圖</p>
+        <p class="text-xs text-gray-400 mt-0.5">即將推出</p>
+      </a>
     </div>
 
-    <!-- Loading skeleton -->
-    <div id="loading" class="space-y-3">
-      <div class="bg-white rounded-2xl shadow-sm p-5">
-        <div class="h-4 bg-gray-100 rounded-md w-20 mb-3 animate-pulse"></div>
-        <div class="h-10 bg-gray-100 rounded-md w-24 animate-pulse"></div>
+    <!-- Favourites section -->
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-sm font-semibold text-gray-700">⭐ 收藏夾</h2>
+        <a href="list.html" class="text-xs text-blue-500">瀏覽全部</a>
       </div>
-      <div class="bg-white rounded-2xl shadow-sm p-5">
-        <div class="h-4 bg-gray-100 rounded-md w-16 mb-3 animate-pulse"></div>
-        <div class="h-10 bg-gray-100 rounded-md w-20 animate-pulse"></div>
+      <div id="fav-loading" class="hidden space-y-2">
+        <div class="bg-white rounded-2xl p-4 h-16 animate-pulse"></div>
+        <div class="bg-white rounded-2xl p-4 h-16 animate-pulse"></div>
       </div>
-    </div>
-
-    <!-- Error state (hidden by default) -->
-    <div id="error" class="hidden bg-red-50 border border-red-100 rounded-2xl p-5 text-center">
-      <p class="text-2xl mb-2">📡</p>
-      <p class="text-sm font-semibold text-red-700">無法獲取數據</p>
-      <p class="text-xs text-red-400 mt-1">請檢查網絡連接，稍後將自動重試</p>
-    </div>
-
-    <!-- Vacancy cards (hidden until data loads) -->
-    <div id="vacancy-cards" class="hidden space-y-3"></div>
-
-    <!-- Rates card -->
-    <div class="bg-white rounded-2xl shadow-sm p-4">
-      <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">收費資訊</h3>
-      <div class="space-y-3 text-sm">
-        <div class="flex gap-3">
-          <div class="w-8 shrink-0">
-            <span class="text-xs font-medium text-gray-400">平日</span>
-          </div>
-          <div class="text-gray-600 space-y-0.5">
-            <p><span class="text-gray-400">07:00–23:00</span>　首2小時 $10/半小時</p>
-            <p class="pl-14">其後 $15/半小時</p>
-            <p><span class="text-gray-400">23:00–07:00</span>　$2/半小時</p>
-          </div>
-        </div>
-        <div class="border-t border-gray-50 pt-3 flex gap-3">
-          <div class="w-8 shrink-0">
-            <span class="text-xs font-medium text-gray-400">假日</span>
-          </div>
-          <div class="text-gray-600 space-y-0.5">
-            <p><span class="text-gray-400">07:00–23:00</span>　首2小時 $16/半小時</p>
-            <p class="pl-14">其後 $24/半小時</p>
-            <p><span class="text-gray-400">23:00–07:00</span>　$2/半小時</p>
-          </div>
-        </div>
+      <div id="fav-empty" class="bg-white rounded-2xl p-6 text-center shadow-sm">
+        <p class="text-2xl mb-2">🅿️</p>
+        <p class="text-sm text-gray-400">尚無收藏</p>
+        <p class="text-xs text-gray-300 mt-1">在停車場詳情頁點擊 ★ 即可收藏</p>
+        <a href="list.html" class="inline-block mt-3 text-xs text-blue-500 border border-blue-200 rounded-lg px-4 py-1.5">瀏覽停車場</a>
       </div>
+      <div id="fav-list" class="hidden space-y-2"></div>
     </div>
 
-    <!-- Footer -->
-    <p class="text-center text-xs text-gray-300 pb-6">
-      數據來源：香港運輸署開放數據<br>每60秒自動更新
-    </p>
+    <!-- Recent / suggested (static for now) -->
+    <div>
+      <h2 class="text-sm font-semibold text-gray-700 mb-2">📍 推薦</h2>
+      <div id="suggested-list" class="space-y-2"></div>
+    </div>
 
+    <p class="text-center text-xs text-gray-300 pb-6">數據來源：香港運輸署開放數據</p>
   </main>
 
+  <div id="tab-bar"></div>
+
   <script>
-    // ── Config ────────────────────────────────────────────────────────────
-    const PARK_ID     = 'tdc114p1';
-    const VACANCY_URL = `https://resource.data.one.gov.hk/td/carpark/vacancy_${PARK_ID}.json`;
-    const REFRESH_MS  = 60_000;
+    document.getElementById('shared-style').textContent = SHARED_STYLE;
+    document.getElementById('tab-bar').innerHTML = renderTabBar('home');
 
-    const VEHICLE_LABELS = { P: '私家車', M: '電單車', L: '輕型貨車', H: '重型貨車', C: '旅遊巴' };
+    // Suggested parks (hardcoded for now, will be replaced by favourites logic in module 2)
+    const SUGGESTED = [
+      { id: 'tdc114p1', name: '中山紀念公園停車場', address: '西營盤東邊街北16號' },
+      { id: 'tdcp5',    name: '大會堂停車場',       address: '愛丁堡廣場' },
+      { id: 'tdcp7',    name: '堅尼地城停車場',     address: '堅尼地城石山街12號' },
+    ];
 
-    // ── State ─────────────────────────────────────────────────────────────
-    let lastSuccessTime = null;
-    let countdownRAF    = null;
-    let countdownStart  = null;
-    let autoTimer       = null;
-
-    // ── Helpers ───────────────────────────────────────────────────────────
-    function vacancyStyle(vacancy, type) {
-      if (type === 'C') return { label: '關閉',  bg: 'bg-gray-50',     badge: 'bg-gray-100 text-gray-400',    num: 'text-gray-300'  };
-      if (vacancy === 0) return { label: '滿位',  bg: 'bg-red-50',      badge: 'bg-red-100 text-red-600',      num: 'text-red-500'   };
-      if (vacancy <  5)  return { label: '極少',  bg: 'bg-orange-50',   badge: 'bg-orange-100 text-orange-600',num: 'text-orange-500'};
-      if (vacancy <= 20) return { label: '有限',  bg: 'bg-yellow-50',   badge: 'bg-yellow-100 text-yellow-700',num: 'text-yellow-600'};
-      return                    { label: '充裕',  bg: 'bg-green-50',    badge: 'bg-green-100 text-green-700',  num: 'text-green-600' };
-    }
-
-    function formatHKTime(dateStr) {
-      if (!dateStr) return '—';
-      // "2026-04-06 14:48:49" → "14:48"
-      const t = dateStr.split(' ')[1];
-      return t ? t.substring(0, 5) : dateStr;
-    }
-
-    // ── Countdown bar ─────────────────────────────────────────────────────
-    function startCountdown() {
-      if (countdownRAF) cancelAnimationFrame(countdownRAF);
-      countdownStart = performance.now();
-      const bar = document.getElementById('countdown-bar');
-
-      function tick(now) {
-        const elapsed = now - countdownStart;
-        const pct = Math.max(0, 100 - (elapsed / REFRESH_MS) * 100);
-        bar.style.width = pct + '%';
-        if (pct > 0) countdownRAF = requestAnimationFrame(tick);
-      }
-      countdownRAF = requestAnimationFrame(tick);
-    }
-
-    // ── Render ────────────────────────────────────────────────────────────
-    function renderCards(parkData) {
-      const container = document.getElementById('vacancy-cards');
-      const types = (parkData.vehicle_type || []).filter(vt => {
-        // only render if there's hourly data
-        return (vt.service_category || []).some(sc => sc.category === 'HOURLY');
-      });
-
-      if (types.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-400 text-sm py-6">暫無空位資料</p>';
-        return;
-      }
-
-      let latestUpdate = null;
-
-      const html = types.map(vt => {
-        const label  = VEHICLE_LABELS[vt.type] || vt.type;
-        const hourly = vt.service_category.find(sc => sc.category === 'HOURLY');
-        const style  = vacancyStyle(hourly.vacancy, hourly.vacancy_type);
-
-        if (hourly.lastupdate && !latestUpdate) latestUpdate = hourly.lastupdate;
-
-        const isClosed    = hourly.vacancy_type === 'C';
-        const isEstimated = hourly.vacancy_type === 'B';
-        const numDisplay  = isClosed ? '—' : String(hourly.vacancy);
-
-        const evLine  = (!isClosed && hourly.vacancyEV  > 0) ? `<p class="text-xs text-gray-400 mt-1.5">⚡ 電動車充電位　${hourly.vacancyEV} 個</p>` : '';
-        const disLine = (!isClosed && hourly.vacancyDIS > 0) ? `<p class="text-xs text-gray-400 mt-0.5">♿ 殘障車位　${hourly.vacancyDIS} 個</p>` : '';
-        const estNote = isEstimated ? '<span class="text-xs text-gray-300 ml-1">(估算)</span>' : '';
-
-        return `
-          <div class="fade-in ${style.bg} rounded-2xl p-5 border border-white">
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-sm font-semibold text-gray-700">${label}${estNote}</span>
-              <span class="text-xs font-medium px-2.5 py-1 rounded-full ${style.badge}">${style.label}</span>
-            </div>
-            <div class="flex items-end gap-1.5">
-              <span class="text-5xl font-bold leading-none ${style.num}">${numDisplay}</span>
-              ${isClosed ? '' : '<span class="text-sm text-gray-400 mb-1.5">個空位</span>'}
-            </div>
-            ${evLine}${disLine}
+    async function loadSuggested() {
+      const listEl = document.getElementById('suggested-list');
+      listEl.innerHTML = SUGGESTED.map(p => `
+        <a href="detail.html?id=${p.id}" class="fade-in bg-white rounded-2xl p-4 flex items-center justify-between active:bg-gray-50 transition-colors block shadow-sm">
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-gray-900 truncate">${p.name}</p>
+            <p class="text-xs text-gray-400 truncate mt-0.5">${p.address}</p>
           </div>
-        `;
-      }).join('');
+          <div id="sug-vacancy-${p.id}" class="shrink-0 ml-3 text-right">
+            <div class="h-6 w-10 bg-gray-100 rounded-lg animate-pulse"></div>
+          </div>
+        </a>
+      `).join('');
 
-      container.innerHTML = html;
-
-      if (latestUpdate) {
-        lastSuccessTime = latestUpdate;
-        document.getElementById('last-update').textContent = `最後更新：${formatHKTime(latestUpdate)}`;
-      }
-    }
-
-    // ── Fetch ─────────────────────────────────────────────────────────────
-    async function fetchVacancy() {
+      // Load vacancy for each
       try {
-        const res  = await fetch(VACANCY_URL, { cache: 'no-store' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-
-        const parks   = json.car_park || [];
-        const parkData = parks.find(p => p.park_id === PARK_ID) || parks[0];
-        if (!parkData) throw new Error('no data');
-
-        document.getElementById('loading').classList.add('hidden');
-        document.getElementById('error').classList.add('hidden');
-        const cards = document.getElementById('vacancy-cards');
-        cards.classList.remove('hidden');
-
-        renderCards(parkData);
-        startCountdown();
-
-      } catch (err) {
-        console.error('[parking] fetch failed:', err);
-        document.getElementById('loading').classList.add('hidden');
-        document.getElementById('vacancy-cards').classList.add('hidden');
-        document.getElementById('error').classList.remove('hidden');
-        document.getElementById('last-update').textContent =
-          lastSuccessTime ? `上次成功：${formatHKTime(lastSuccessTime)}` : '無法連線';
-      }
+        const vacJson = await fetchAllVacancy();
+        SUGGESTED.forEach(p => {
+          const el = document.getElementById(`sug-vacancy-${p.id}`);
+          if (!el) return;
+          const v = getParkVacancy(p.id, vacJson);
+          if (!v) { el.innerHTML = ''; return; }
+          const style = vacancyStyle(v.vacancy, v.vacancy_type);
+          const isClosed = v.vacancy_type === 'C' || v.vacancy < 0;
+          el.innerHTML = `
+            <span class="text-xl font-bold ${style.num}">${isClosed ? '—' : v.vacancy}</span>
+            <p class="text-[10px] ${style.num}">${style.label}</p>
+          `;
+        });
+      } catch (_) {}
     }
 
-    // ── Manual refresh ────────────────────────────────────────────────────
-    function manualRefresh() {
-      const btn  = document.getElementById('refresh-btn');
-      const icon = document.getElementById('refresh-icon');
-      if (btn.disabled) return;
-      btn.disabled = true;
-      icon.classList.add('spinning');
+    // Favourites: placeholder for module 2
+    // (module 2 will implement getFavourites() in app.js and render here)
+    document.getElementById('fav-empty').classList.remove('hidden');
 
-      // Reset auto-refresh timer
-      clearInterval(autoTimer);
-
-      fetchVacancy().finally(() => {
-        btn.disabled = false;
-        icon.classList.remove('spinning');
-        autoTimer = setInterval(fetchVacancy, REFRESH_MS);
-      });
-    }
-
-    // ── Boot ──────────────────────────────────────────────────────────────
-    fetchVacancy();
-    autoTimer = setInterval(fetchVacancy, REFRESH_MS);
+    loadSuggested();
   </script>
 </body>
 </html>

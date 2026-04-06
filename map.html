@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>地圖視圖</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="app.js"></script>
+  <style id="shared-style"></style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <header class="bg-white border-b border-gray-100">
+    <div class="max-w-md mx-auto px-4 py-4">
+      <h1 class="text-base font-bold text-gray-900">地圖視圖</h1>
+    </div>
+  </header>
+  <main class="max-w-md mx-auto px-4 py-16 text-center">
+    <p class="text-5xl mb-4">◎</p>
+    <p class="text-base font-semibold text-gray-700">地圖視圖</p>
+    <p class="text-sm text-gray-400 mt-2">即將推出</p>
+  </main>
+  <div id="tab-bar"></div>
+  <script>
+    document.getElementById('shared-style').textContent = SHARED_STYLE;
+    document.getElementById('tab-bar').innerHTML = renderTabBar('map');
+  </script>
+</body>
+</html>
