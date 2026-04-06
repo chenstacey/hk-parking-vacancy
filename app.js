@@ -27,6 +27,46 @@ const DISTRICT_LABELS = {
   'Yuen Long':         '元朗',
 };
 
+// ── Region groupings ──────────────────────────────────────────────────────
+const REGIONS = [
+  {
+    id: 'hki', label: '港島',
+    districts: ['Central & Western', 'Wan Chai', 'Eastern', 'Southern'],
+  },
+  {
+    id: 'kln', label: '九龍',
+    districts: ['Yau Tsim Mong', 'Sham Shui Po', 'Kowloon City', 'Wong Tai Sin', 'Kwun Tong'],
+  },
+  {
+    id: 'nt', label: '新界',
+    districts: ['Kwai Tsing', 'Tsuen Wan', 'Tuen Mun', 'Yuen Long', 'North', 'Tai Po', 'Sha Tin', 'Sai Kung', 'Islands'],
+  },
+];
+
+function getRegionDistricts(regionId) {
+  const r = REGIONS.find(r => r.id === regionId);
+  return r ? r.districts : null; // null = 全部
+}
+
+// ── Favourites (localStorage) ─────────────────────────────────────────────
+function getFavourites() {
+  try { return JSON.parse(localStorage.getItem('favourites') || '[]'); }
+  catch (_) { return []; }
+}
+
+function isFavourite(parkId) {
+  return getFavourites().includes(parkId);
+}
+
+function toggleFavourite(parkId) {
+  const favs = getFavourites();
+  const idx  = favs.indexOf(parkId);
+  if (idx === -1) favs.push(parkId);
+  else favs.splice(idx, 1);
+  localStorage.setItem('favourites', JSON.stringify(favs));
+  return idx === -1; // true = added
+}
+
 // ── Vacancy styling ───────────────────────────────────────────────────────
 function vacancyStyle(vacancy, vacancyType) {
   if (vacancyType === 'C' || vacancy < 0)
@@ -59,10 +99,12 @@ function formatHKTime(dateStr) {
 }
 
 // ── Search / filter ───────────────────────────────────────────────────────
-function searchCarparks(query, district, allInfo) {
+// districts: single string, array of strings, or null/'' for all
+function searchCarparks(query, districts, allInfo) {
   let results = allInfo || [];
-  if (district) {
-    results = results.filter(p => p.district_en === district);
+  if (districts && districts.length) {
+    const distArr = Array.isArray(districts) ? districts : [districts];
+    results = results.filter(p => distArr.includes(p.district_en));
   }
   if (query && query.trim()) {
     const q = query.trim().toLowerCase();

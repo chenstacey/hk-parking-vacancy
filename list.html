@@ -8,15 +8,19 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="app.js"></script>
   <style id="shared-style"></style>
+  <style>
+    .no-scrollbar { scrollbar-width: none; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+  </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
 
   <!-- Header -->
   <header class="bg-white border-b border-gray-100 sticky top-0 z-10">
-    <div class="max-w-md mx-auto px-4 pt-3 pb-2">
+    <div class="max-w-md mx-auto px-4 pt-3 pb-0">
       <h1 class="text-base font-bold text-gray-900 mb-2">停車場</h1>
       <!-- Search box -->
-      <div class="relative">
+      <div class="relative mb-2">
         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-sm">🔍</span>
         <input
           id="search-input"
@@ -27,31 +31,40 @@
         >
       </div>
     </div>
-    <!-- District chips -->
-    <div id="district-chips" class="flex gap-2 overflow-x-auto px-4 pb-3 pt-1 scrollbar-hide" style="scrollbar-width:none">
-      <button
-        data-district=""
-        onclick="selectDistrict(this)"
-        class="district-chip shrink-0 text-xs font-medium px-3 py-1.5 rounded-full bg-blue-500 text-white"
-      >全部</button>
+
+    <!-- Region tabs: 港島 / 九龍 / 新界 / 全部 -->
+    <div class="max-w-md mx-auto px-4 flex gap-0 border-b border-gray-100">
+      <button data-region="hki" onclick="selectRegion(this)"
+        class="region-tab flex-1 text-xs font-semibold py-2 border-b-2 border-blue-500 text-blue-500">港島</button>
+      <button data-region="kln" onclick="selectRegion(this)"
+        class="region-tab flex-1 text-xs font-semibold py-2 border-b-2 border-transparent text-gray-400">九龍</button>
+      <button data-region="nt"  onclick="selectRegion(this)"
+        class="region-tab flex-1 text-xs font-semibold py-2 border-b-2 border-transparent text-gray-400">新界</button>
+      <button data-region=""    onclick="selectRegion(this)"
+        class="region-tab flex-1 text-xs font-semibold py-2 border-b-2 border-transparent text-gray-400">全部</button>
     </div>
+
+    <!-- District chips (sub-filter within region) -->
+    <div id="district-chips" class="flex gap-2 overflow-x-auto no-scrollbar px-4 py-2"></div>
   </header>
 
   <main class="max-w-md mx-auto px-4 py-3">
-    <!-- Result count -->
     <p id="result-count" class="text-xs text-gray-400 mb-3">載入中…</p>
 
     <!-- Loading skeletons -->
     <div id="loading" class="space-y-2">
-      ${Array(6).fill(0).map(() => `
-        <div class="bg-white rounded-2xl p-4 flex items-center justify-between">
-          <div class="space-y-2 flex-1">
-            <div class="h-3.5 bg-gray-100 rounded w-36 animate-pulse"></div>
-            <div class="h-3 bg-gray-100 rounded w-48 animate-pulse"></div>
-          </div>
-          <div class="h-8 w-12 bg-gray-100 rounded-xl animate-pulse ml-4"></div>
-        </div>
-      `).join('')}
+      <div class="bg-white rounded-2xl p-4 flex items-center justify-between">
+        <div class="space-y-2 flex-1"><div class="h-3.5 bg-gray-100 rounded w-36 animate-pulse"></div><div class="h-3 bg-gray-100 rounded w-48 animate-pulse"></div></div>
+        <div class="h-8 w-12 bg-gray-100 rounded-xl animate-pulse ml-4"></div>
+      </div>
+      <div class="bg-white rounded-2xl p-4 flex items-center justify-between">
+        <div class="space-y-2 flex-1"><div class="h-3.5 bg-gray-100 rounded w-40 animate-pulse"></div><div class="h-3 bg-gray-100 rounded w-52 animate-pulse"></div></div>
+        <div class="h-8 w-12 bg-gray-100 rounded-xl animate-pulse ml-4"></div>
+      </div>
+      <div class="bg-white rounded-2xl p-4 flex items-center justify-between">
+        <div class="space-y-2 flex-1"><div class="h-3.5 bg-gray-100 rounded w-32 animate-pulse"></div><div class="h-3 bg-gray-100 rounded w-44 animate-pulse"></div></div>
+        <div class="h-8 w-12 bg-gray-100 rounded-xl animate-pulse ml-4"></div>
+      </div>
     </div>
 
     <!-- Error state -->
@@ -65,7 +78,7 @@
     <!-- Carpark list -->
     <div id="carpark-list" class="hidden space-y-2"></div>
 
-    <!-- Empty search result -->
+    <!-- Empty -->
     <div id="empty" class="hidden text-center py-12">
       <p class="text-3xl mb-2">🅿️</p>
       <p class="text-sm text-gray-400">找不到相關停車場</p>
@@ -79,11 +92,12 @@
     document.getElementById('tab-bar').innerHTML = renderTabBar('list');
 
     // ── State ─────────────────────────────────────────────────────────────
-    let allInfo      = [];
-    let allVacancy   = null;
-    let selectedDist = '';
-    let searchQuery  = '';
-    let vacancyTimer = null;
+    let allInfo        = [];
+    let allVacancy     = null;
+    let selectedRegion = 'hki';   // default: 港島
+    let selectedDist   = null;    // null = all districts in region
+    let searchQuery    = '';
+    let vacancyTimer   = null;
 
     // ── Boot ──────────────────────────────────────────────────────────────
     async function loadData() {
@@ -98,7 +112,6 @@
         renderList();
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('carpark-list').classList.remove('hidden');
-        // Start vacancy refresh
         clearInterval(vacancyTimer);
         vacancyTimer = setInterval(refreshVacancy, REFRESH_MS);
       } catch (err) {
@@ -109,31 +122,53 @@
     }
 
     async function refreshVacancy() {
-      try {
-        allVacancy = await fetchAllVacancy();
-        renderList();
-      } catch (_) {}
+      try { allVacancy = await fetchAllVacancy(); renderList(); } catch (_) {}
     }
 
-    // ── Districts ─────────────────────────────────────────────────────────
-    function buildDistrictChips() {
-      const districts = [...new Set(allInfo.map(p => p.district_en).filter(Boolean))].sort();
-      const container = document.getElementById('district-chips');
-      districts.forEach(d => {
-        const btn = document.createElement('button');
-        btn.dataset.district = d;
-        btn.onclick = () => selectDistrict(btn);
-        btn.className = 'district-chip shrink-0 text-xs font-medium px-3 py-1.5 rounded-full bg-gray-100 text-gray-600';
-        btn.textContent = DISTRICT_LABELS[d] || d;
-        container.appendChild(btn);
+    // ── Region tabs ───────────────────────────────────────────────────────
+    function selectRegion(btn) {
+      selectedRegion = btn.dataset.region;
+      selectedDist   = null;
+      document.querySelectorAll('.region-tab').forEach(b => {
+        const active = b === btn;
+        b.className = `region-tab flex-1 text-xs font-semibold py-2 border-b-2 ${active ? 'border-blue-500 text-blue-500' : 'border-transparent text-gray-400'}`;
       });
+      buildDistrictChips();
+      renderList();
+    }
+
+    // ── District chips ────────────────────────────────────────────────────
+    function buildDistrictChips() {
+      const container = document.getElementById('district-chips');
+      const regionDists = getRegionDistricts(selectedRegion); // null if "全部"
+
+      if (!regionDists) {
+        container.innerHTML = '';
+        return;
+      }
+
+      // Only show districts that actually have carparks in the data
+      const available = regionDists.filter(d => allInfo.some(p => p.district_en === d));
+
+      container.innerHTML = [
+        `<button data-dist="" onclick="selectDistrict(this)"
+          class="dist-chip shrink-0 text-xs font-medium px-3 py-1 rounded-full ${!selectedDist ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}">
+          全區
+        </button>`,
+        ...available.map(d => `
+          <button data-dist="${d}" onclick="selectDistrict(this)"
+            class="dist-chip shrink-0 text-xs font-medium px-3 py-1 rounded-full ${selectedDist === d ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}">
+            ${DISTRICT_LABELS[d] || d}
+          </button>
+        `)
+      ].join('');
     }
 
     function selectDistrict(btn) {
-      selectedDist = btn.dataset.district;
-      document.querySelectorAll('.district-chip').forEach(b => {
+      selectedDist = btn.dataset.dist || null;
+      document.querySelectorAll('.dist-chip').forEach(b => {
         const active = b === btn;
-        b.className = `district-chip shrink-0 text-xs font-medium px-3 py-1.5 rounded-full ${active ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'}`;
+        b.className = `dist-chip shrink-0 text-xs font-medium px-3 py-1 rounded-full ${active ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}`;
       });
       renderList();
     }
@@ -144,9 +179,16 @@
       renderList();
     }
 
+    // ── Effective district filter ─────────────────────────────────────────
+    function effectiveDistricts() {
+      if (selectedDist) return [selectedDist];
+      const regionDists = getRegionDistricts(selectedRegion);
+      return regionDists || null; // null = no filter (全部)
+    }
+
     // ── Render ────────────────────────────────────────────────────────────
     function renderList() {
-      const results = searchCarparks(searchQuery, selectedDist, allInfo);
+      const results = searchCarparks(searchQuery, effectiveDistricts(), allInfo);
       const countEl = document.getElementById('result-count');
       const listEl  = document.getElementById('carpark-list');
       const emptyEl = document.getElementById('empty');
@@ -162,32 +204,33 @@
       listEl.classList.remove('hidden');
 
       listEl.innerHTML = results.map(park => {
-        const v     = getParkVacancy(park.park_id, allVacancy);
-        const style = v ? vacancyStyle(v.vacancy, v.vacancy_type) : null;
+        const v        = getParkVacancy(park.park_id, allVacancy);
+        const style    = v ? vacancyStyle(v.vacancy, v.vacancy_type) : null;
         const isClosed = !v || v.vacancy_type === 'C' || v.vacancy < 0;
+        const fav      = isFavourite(park.park_id);
 
         const badgeHtml = style
           ? `<div class="shrink-0 text-center ml-3">
                <span class="text-2xl font-bold leading-none ${style.num}">${isClosed ? '—' : v.vacancy}</span>
                <p class="text-[10px] ${style.num} mt-0.5">${style.label}</p>
              </div>`
-          : `<div class="shrink-0 ml-3 w-10 h-10 bg-gray-100 rounded-xl animate-pulse"></div>`;
+          : `<div class="shrink-0 ml-3 w-10 h-8 bg-gray-100 rounded-xl animate-pulse"></div>`;
 
         const distLabel = DISTRICT_LABELS[park.district_en] || park.district_en || '';
         const statusDot = park.opening_status === 'OPEN'
           ? `<span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block mr-1"></span>`
           : `<span class="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block mr-1"></span>`;
+        const favStar = fav ? `<span class="text-yellow-400 text-xs ml-1">★</span>` : '';
 
         return `
           <a href="detail.html?id=${park.park_id}" class="fade-in bg-white rounded-2xl p-4 flex items-center active:bg-gray-50 transition-colors block">
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-semibold text-gray-900 truncate">${park.name_tc || park.name_en}</p>
+              <p class="text-sm font-semibold text-gray-900 truncate">${park.name_tc || park.name_en}${favStar}</p>
               <p class="text-xs text-gray-400 truncate mt-0.5">${park.displayAddress_tc || park.displayAddress_en || ''}</p>
               <p class="text-xs text-gray-300 mt-1">${statusDot}${distLabel}</p>
             </div>
             ${badgeHtml}
-          </a>
-        `;
+          </a>`;
       }).join('');
     }
 

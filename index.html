@@ -115,10 +115,52 @@
       } catch (_) {}
     }
 
-    // Favourites: placeholder for module 2
-    // (module 2 will implement getFavourites() in app.js and render here)
-    document.getElementById('fav-empty').classList.remove('hidden');
+    async function loadFavourites() {
+      const favIds = getFavourites();
+      const favEmptyEl = document.getElementById('fav-empty');
+      const favListEl  = document.getElementById('fav-list');
+      const favLoadEl  = document.getElementById('fav-loading');
 
+      if (favIds.length === 0) {
+        favEmptyEl.classList.remove('hidden');
+        return;
+      }
+      favEmptyEl.classList.add('hidden');
+      favLoadEl.classList.remove('hidden');
+
+      try {
+        const [infoJson, vacJson] = await Promise.all([fetchAllInfo(), fetchAllVacancy()]);
+        const allParks = infoJson.car_park || [];
+
+        favLoadEl.classList.add('hidden');
+        favListEl.classList.remove('hidden');
+        favListEl.innerHTML = favIds.map(id => {
+          const park = allParks.find(p => p.park_id === id);
+          if (!park) return '';
+          const v      = getParkVacancy(id, vacJson);
+          const style  = v ? vacancyStyle(v.vacancy, v.vacancy_type) : null;
+          const closed = !v || v.vacancy_type === 'C' || v.vacancy < 0;
+          const badge  = style
+            ? `<div class="shrink-0 ml-3 text-center">
+                 <span class="text-2xl font-bold leading-none ${style.num}">${closed ? '—' : v.vacancy}</span>
+                 <p class="text-[10px] ${style.num} mt-0.5">${style.label}</p>
+               </div>`
+            : '';
+          return `
+            <a href="detail.html?id=${id}" class="fade-in bg-white rounded-2xl p-4 flex items-center shadow-sm active:bg-gray-50 transition-colors block">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-gray-900 truncate">★ ${park.name_tc || park.name_en}</p>
+                <p class="text-xs text-gray-400 truncate mt-0.5">${park.displayAddress_tc || ''}</p>
+              </div>${badge}
+            </a>`;
+        }).join('');
+      } catch (_) {
+        favLoadEl.classList.add('hidden');
+        favEmptyEl.classList.remove('hidden');
+      }
+    }
+
+    loadFavourites();
     loadSuggested();
   </script>
 </body>
