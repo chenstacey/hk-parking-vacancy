@@ -81,7 +81,13 @@ const STRINGS = {
     // Map
     viewDetails: '查看詳情', privateCar: '私家車',
     mapLoading: '地圖載入中…', mapError: '無法載入地圖數據',
-    spaces: '個空位',
+    // Address search & meters
+    searchAddressPlaceholder: '輸入地址搜索附近…',
+    searching: '搜索中…', noAddressResult: '找不到該地址',
+    meters: '咪表', carparks: '停車場',
+    meterVacant: '空置', meterOccupied: '已泊', meterOff: '停用',
+    nearbyRadius: '800米範圍', loadingMeters: '載入咪表數據…',
+    openMap: '在地圖查看',
   },
   en: {
     // Vacancy status
@@ -126,6 +132,13 @@ const STRINGS = {
     // Map
     viewDetails: 'View Details', privateCar: 'Private Car',
     mapLoading: 'Loading map data…', mapError: 'Unable to load map data',
+    // Address search & meters
+    searchAddressPlaceholder: 'Search address for nearby…',
+    searching: 'Searching…', noAddressResult: 'Address not found',
+    meters: 'Meters', carparks: 'Carparks',
+    meterVacant: 'Vacant', meterOccupied: 'Occupied', meterOff: 'Off',
+    nearbyRadius: '800m radius', loadingMeters: 'Loading meter data…',
+    openMap: 'View on Map',
     spaces: ' spaces',
   },
 };
@@ -250,6 +263,31 @@ function searchCarparks(query, districts, allInfo) {
   return results;
 }
 
+// ── Meter API ─────────────────────────────────────────────────────────────
+const METER_INFO_URL     = 'https://resource.data.one.gov.hk/td/psiparkingspaces/spaceinfo/parkingspaces.csv';
+const METER_VACANCY_URL  = 'https://resource.data.one.gov.hk/td/psiparkingspaces/occupancystatus/occupancystatus.csv';
+
+// ── CSV parser ────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.replace(/\r/g, '').trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim());
+  return lines.slice(1).map(line => {
+    const vals = line.split(',');
+    const obj  = {};
+    headers.forEach((h, i) => { obj[h] = (vals[i] || '').trim(); });
+    return obj;
+  });
+}
+
+// ── Haversine distance (km) ───────────────────────────────────────────────
+function distanceKm(lat1, lng1, lat2, lng2) {
+  const R = 6371, toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 // ── Fetch helpers ─────────────────────────────────────────────────────────
 async function fetchAllInfo() {
   const res = await fetch(INFO_URL, { cache: 'no-store' });
@@ -261,6 +299,32 @@ async function fetchAllVacancy() {
   const res = await fetch(VACANCY_URL, { cache: 'no-store' });
   if (!res.ok) throw new Error(`VACANCY ${res.status}`);
   return res.json();
+}
+
+// Fetch + join meter location + occupancy, return array of merged rows
+async function fetchMeters() {
+  const [infoText, vacText] = await Promise.all([
+    fetch(METER_INFO_URL,    { cache: 'default' }).then(r => r.text()),
+    fetch(METER_VACANCY_URL, { cache: 'no-store' }).then(r => r.text()),
+  ]);
+  const infoRows  = parseCSV(infoText);
+  const vacRows   = parseCSV(vacText);
+  // Build occupancy lookup: ParkingSpaceId → { status, meterStatus }
+  const vacMap = {};
+  vacRows.forEach(r => { vacMap[r.ParkingSpaceId] = r; });
+  // Merge
+  return infoRows.map(row => {
+    const occ = vacMap[row.ParkingSpaceId] || {};
+    return {
+      id:      row.ParkingSpaceId,
+      lat:     parseFloat(row.Latitude),
+      lng:     parseFloat(row.Longitude),
+      street:  row.Street_tc || row.Street,
+      district:row.District_tc || row.District,
+      status:  occ.OccupancyStatus    || 'U',   // V=Vacant O=Occupied U=Unknown
+      meterOk: occ.ParkingMeterStatus !== 'NU',  // false = not in use
+    };
+  }).filter(r => r.lat && r.lng);
 }
 
 // ── Tab bar HTML (injected into each page) ────────────────────────────────

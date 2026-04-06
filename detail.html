@@ -7,7 +7,13 @@
   <title>停車場詳情</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="app.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style id="shared-style"></style>
+  <style>
+    #mini-map { height: 160px; border-radius: 0; }
+    .leaflet-control-attribution { font-size: 8px; }
+  </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
 
@@ -73,6 +79,14 @@
       <div id="info-content" class="text-sm text-gray-600 space-y-1.5"></div>
     </div>
 
+    <!-- Mini map -->
+    <div id="mini-map-card" class="hidden bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div id="mini-map"></div>
+      <a id="mini-map-link" href="map.html" class="flex items-center justify-center gap-1.5 py-2.5 text-xs text-blue-500 font-medium active:bg-gray-50">
+        <span>◎</span><span id="txt-open-map"></span>
+      </a>
+    </div>
+
     <p id="txt-footer" class="text-center text-xs text-gray-300 pb-6"></p>
   </main>
 
@@ -89,10 +103,11 @@
     document.getElementById('txt-refresh-now').textContent = t('refreshNow');
     document.getElementById('txt-load-error').textContent  = t('loadError');
     document.getElementById('txt-error-hint').textContent  = t('checkNetwork') + '，' + t('autoRefresh').toLowerCase();
-    document.getElementById('txt-rates').textContent       = t('rates');
+    document.getElementById('txt-rates').textContent        = t('rates');
     document.getElementById('txt-carpark-info').textContent = t('carparkInfo');
-    document.getElementById('txt-footer').innerHTML        = t('dataSource') + '<br>' + t('autoRefresh');
-    document.getElementById('fav-btn').title               = t('favourite');
+    document.getElementById('txt-footer').innerHTML         = t('dataSource') + '<br>' + t('autoRefresh');
+    document.getElementById('fav-btn').title                = t('favourite');
+    document.getElementById('txt-open-map').textContent     = t('openMap');
 
     const parkId = new URLSearchParams(location.search).get('id');
     if (!parkId) location.href = 'list.html';
@@ -146,6 +161,35 @@
       if (lines.length) {
         document.getElementById('info-card').classList.remove('hidden');
         document.getElementById('info-content').innerHTML = lines.map(l => `<p>${l}</p>`).join('');
+      }
+
+      // Mini map
+      const lat = parseFloat(park.latitude);
+      const lng = parseFloat(park.longitude);
+      if (lat && lng) {
+        const card = document.getElementById('mini-map-card');
+        card.classList.remove('hidden');
+        // Link to full map page centred on this park
+        document.getElementById('mini-map-link').href = `map.html?lat=${lat}&lng=${lng}`;
+        // Init Leaflet (only once)
+        if (!window._miniMapInit) {
+          window._miniMapInit = true;
+          const miniMap = L.map('mini-map', {
+            center: [lat, lng], zoom: 16,
+            zoomControl: false, dragging: false,
+            touchZoom: false, doubleClickZoom: false,
+            scrollWheelZoom: false, boxZoom: false, keyboard: false,
+          });
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap', maxZoom: 19,
+          }).addTo(miniMap);
+          L.circleMarker([lat, lng], {
+            radius: 10, fillColor: '#3b82f6', color: 'white',
+            weight: 2.5, fillOpacity: 1,
+          }).addTo(miniMap);
+          // Ensure tiles render correctly
+          setTimeout(() => miniMap.invalidateSize(), 100);
+        }
       }
     }
 

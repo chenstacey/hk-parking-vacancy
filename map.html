@@ -12,36 +12,19 @@
   <style id="shared-style"></style>
   <style>
     html, body { height: 100%; margin: 0; }
-
     #map {
       position: fixed;
-      top: var(--header-h, 96px);
-      left: 0; right: 0;
-      bottom: 64px; /* tab bar */
+      top: var(--header-h, 120px);
+      left: 0; right: 0; bottom: 64px;
     }
-
-    /* Leaflet popup tweaks for mobile */
     .leaflet-popup-content-wrapper {
       border-radius: 16px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.12);
-      padding: 0;
-      overflow: hidden;
+      padding: 0; overflow: hidden;
     }
-    .leaflet-popup-content {
-      margin: 0;
-      min-width: 180px;
-    }
+    .leaflet-popup-content { margin: 0; min-width: 190px; }
     .leaflet-popup-tip-container { margin-top: -1px; }
-
-    /* Vacancy dot markers */
-    .cp-marker {
-      border: 2.5px solid white;
-      border-radius: 50%;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-      cursor: pointer;
-    }
-
-    /* Region filter chips scroll */
+    .leaflet-control-attribution { font-size: 9px; }
     .no-scrollbar { scrollbar-width: none; }
     .no-scrollbar::-webkit-scrollbar { display: none; }
   </style>
@@ -50,53 +33,76 @@
 
   <!-- Header -->
   <header id="header" class="bg-white border-b border-gray-100 fixed top-0 left-0 right-0 z-[1000]">
-    <div class="max-w-2xl mx-auto px-4 pt-3 pb-0">
+    <div class="max-w-2xl mx-auto px-4 pt-3 pb-2">
+      <!-- Row 1: title + lang toggle -->
       <div class="flex items-center justify-between mb-2">
         <h1 id="txt-map-title" class="text-base font-bold text-gray-900"></h1>
         <div id="lang-toggle"></div>
       </div>
+      <!-- Row 2: address search -->
+      <div class="relative">
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-sm pointer-events-none">🔍</span>
+        <input id="addr-input" type="search" autocomplete="off"
+          class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-8 pr-4 py-2 text-sm outline-none focus:border-blue-300 focus:bg-white transition-colors"
+          onkeydown="if(event.key==='Enter') searchAddress()">
+        <button id="search-clear" onclick="clearSearch()"
+          class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 text-lg leading-none">×</button>
+      </div>
     </div>
-    <!-- Region filter -->
-    <div class="max-w-2xl mx-auto flex gap-0 border-b border-gray-100" id="region-tabs">
-      <!-- built by JS -->
+    <!-- Row 3: region tabs + layer toggle -->
+    <div class="max-w-2xl mx-auto flex items-stretch">
+      <div id="region-tabs" class="flex flex-1"></div>
+      <!-- Layer toggle pill -->
+      <div class="flex items-center pr-4 gap-1 border-b border-gray-100">
+        <button id="btn-carparks" onclick="toggleLayer('carparks')"
+          class="text-[10px] font-semibold px-2 py-1 rounded-lg bg-blue-500 text-white transition-colors">
+          🅿️
+        </button>
+        <button id="btn-meters" onclick="toggleLayer('meters')"
+          class="text-[10px] font-semibold px-2 py-1 rounded-lg bg-gray-100 text-gray-500 transition-colors">
+          🅼
+        </button>
+      </div>
     </div>
   </header>
 
-  <!-- Map container -->
+  <!-- Map -->
   <div id="map"></div>
 
   <!-- Loading overlay -->
-  <div id="map-loading"
-    class="fixed z-[999] bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3"
-    style="top:var(--header-h,96px); left:0; right:0; bottom:64px;">
+  <div id="map-loading" class="fixed z-[999] bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3"
+    style="top:var(--header-h,120px);left:0;right:0;bottom:64px;">
     <div class="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full spinning"></div>
     <p id="txt-map-loading" class="text-sm text-gray-500"></p>
   </div>
 
   <!-- Error overlay -->
   <div id="map-error" class="hidden fixed z-[999] bg-white flex flex-col items-center justify-center gap-3"
-    style="top:var(--header-h,96px); left:0; right:0; bottom:64px;">
+    style="top:var(--header-h,120px);left:0;right:0;bottom:64px;">
     <p class="text-3xl">📡</p>
     <p id="txt-map-error" class="text-sm font-semibold text-red-600"></p>
-    <button onclick="loadMapData()" class="text-xs text-red-500 border border-red-200 rounded-lg px-4 py-1.5">
-      <span id="txt-retry"></span>
-    </button>
+    <button onclick="loadMapData()" class="text-xs text-red-500 border border-red-200 rounded-lg px-4 py-1.5" id="txt-retry"></button>
   </div>
 
-  <!-- Vacancy legend -->
-  <div id="legend"
-    class="hidden fixed z-[999] bg-white/90 backdrop-blur-sm rounded-2xl shadow-sm px-3 py-2 flex items-center gap-3"
-    style="bottom: 76px; left: 50%; transform: translateX(-50%); white-space: nowrap;">
-    <span class="flex items-center gap-1 text-xs text-gray-600">
-      <span class="w-3 h-3 rounded-full bg-green-500 inline-block"></span>充裕</span>
-    <span class="flex items-center gap-1 text-xs text-gray-600">
-      <span class="w-3 h-3 rounded-full bg-yellow-400 inline-block"></span>有限</span>
-    <span class="flex items-center gap-1 text-xs text-gray-600">
-      <span class="w-3 h-3 rounded-full bg-orange-400 inline-block"></span>極少</span>
-    <span class="flex items-center gap-1 text-xs text-gray-600">
-      <span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>滿位</span>
-    <span class="flex items-center gap-1 text-xs text-gray-600">
-      <span class="w-3 h-3 rounded-full bg-gray-300 inline-block"></span>關閉</span>
+  <!-- Search status toast -->
+  <div id="search-toast" class="hidden fixed z-[1001] left-1/2 -translate-x-1/2 bg-gray-800/90 text-white text-xs rounded-full px-4 py-2 backdrop-blur-sm"
+    style="top: calc(var(--header-h,120px) + 12px)"></div>
+
+  <!-- Legend -->
+  <div id="legend" class="hidden fixed z-[999] bg-white/90 backdrop-blur-sm rounded-2xl shadow-sm px-3 py-2"
+    style="bottom:76px; left:50%; transform:translateX(-50%); white-space:nowrap;">
+    <div id="legend-carparks" class="flex items-center gap-3">
+      <span class="flex items-center gap-1 text-xs text-gray-600"><span class="w-3 h-3 rounded-full bg-green-500 inline-block"></span>充裕</span>
+      <span class="flex items-center gap-1 text-xs text-gray-600"><span class="w-3 h-3 rounded-full bg-yellow-400 inline-block"></span>有限</span>
+      <span class="flex items-center gap-1 text-xs text-gray-600"><span class="w-3 h-3 rounded-full bg-orange-400 inline-block"></span>極少</span>
+      <span class="flex items-center gap-1 text-xs text-gray-600"><span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>滿位</span>
+      <span class="flex items-center gap-1 text-xs text-gray-600"><span class="w-3 h-3 rounded-full bg-gray-300 inline-block"></span>關閉</span>
+    </div>
+    <div id="legend-meters" class="hidden flex items-center gap-3 mt-1">
+      <span class="flex items-center gap-1 text-xs text-gray-600"><span class="w-2.5 h-2.5 rounded-full bg-green-400 inline-block"></span>空置</span>
+      <span class="flex items-center gap-1 text-xs text-gray-600"><span class="w-2.5 h-2.5 rounded-full bg-red-400 inline-block"></span>已泊</span>
+      <span class="flex items-center gap-1 text-xs text-gray-600"><span class="w-2.5 h-2.5 rounded-full bg-gray-300 inline-block"></span>停用</span>
+    </div>
   </div>
 
   <div id="tab-bar"></div>
@@ -105,14 +111,12 @@
     document.getElementById('shared-style').textContent = SHARED_STYLE;
     document.getElementById('tab-bar').innerHTML = renderTabBar('map');
     document.getElementById('lang-toggle').innerHTML = renderLangToggle();
-
-    // i18n
     document.getElementById('txt-map-title').textContent   = t('mapView');
     document.getElementById('txt-map-loading').textContent = t('mapLoading');
     document.getElementById('txt-map-error').textContent   = t('mapError');
     document.getElementById('txt-retry').textContent       = t('retry');
+    document.getElementById('addr-input').placeholder      = t('searchAddressPlaceholder');
 
-    // ── Adjust map top based on actual header height ──────────────────────
     function applyHeaderHeight() {
       const h = document.getElementById('header').offsetHeight;
       document.documentElement.style.setProperty('--header-h', h + 'px');
@@ -120,17 +124,14 @@
     applyHeaderHeight();
 
     // ── Region tabs ───────────────────────────────────────────────────────
-    let selectedRegion = ''; // '' = all
+    let selectedRegion = '';
     const regionTabsEl = document.getElementById('region-tabs');
-
-    // "全部" first
     const allTab = document.createElement('button');
     allTab.dataset.region = '';
     allTab.className = 'region-tab flex-1 text-xs font-semibold py-2 border-b-2 border-blue-500 text-blue-500';
     allTab.textContent = t('all');
     allTab.onclick = () => selectRegion(allTab);
     regionTabsEl.appendChild(allTab);
-
     REGIONS.forEach(r => {
       const btn = document.createElement('button');
       btn.dataset.region = r.id;
@@ -149,55 +150,79 @@
     }
 
     function applyRegionFilter() {
-      const districts = getRegionDistricts(selectedRegion); // null = all
-      Object.entries(markerMap).forEach(([parkId, { marker, park }]) => {
-        const inRegion = !districts || districts.includes(park.district_en);
-        if (inRegion) marker.addTo(map);
-        else map.removeLayer(marker);
+      const districts = getRegionDistricts(selectedRegion);
+      Object.values(markerMap).forEach(({ marker, park }) => {
+        const show = !districts || districts.includes(park.district_en);
+        if (show) marker.addTo(map); else map.removeLayer(marker);
       });
-      // Fly to region bounds if filtered
       if (selectedRegion) {
         const visible = Object.values(markerMap)
           .filter(({ park }) => getRegionDistricts(selectedRegion)?.includes(park.district_en))
           .map(({ marker }) => marker.getLatLng());
-        if (visible.length) {
-          const bounds = L.latLngBounds(visible);
-          map.flyToBounds(bounds, { padding: [40, 40], duration: 0.8 });
+        if (visible.length) map.flyToBounds(L.latLngBounds(visible), { padding: [40, 40], duration: 0.8 });
+      }
+    }
+
+    // ── Layer toggle ──────────────────────────────────────────────────────
+    let showCarparks = true;
+    let showMeters   = false;
+
+    function toggleLayer(layer) {
+      if (layer === 'carparks') {
+        showCarparks = !showCarparks;
+        document.getElementById('btn-carparks').className =
+          `text-[10px] font-semibold px-2 py-1 rounded-lg transition-colors ${showCarparks ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-500'}`;
+        Object.values(markerMap).forEach(({ marker }) => {
+          if (showCarparks) marker.addTo(map); else map.removeLayer(marker);
+        });
+        document.getElementById('legend-carparks').classList.toggle('hidden', !showCarparks);
+      } else {
+        showMeters = !showMeters;
+        document.getElementById('btn-meters').className =
+          `text-[10px] font-semibold px-2 py-1 rounded-lg transition-colors ${showMeters ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-500'}`;
+        document.getElementById('legend-meters').classList.toggle('hidden', !showMeters);
+        if (showMeters && searchCenter) {
+          showMeterLayer(searchCenter.lat, searchCenter.lng);
+        } else if (!showMeters) {
+          meterLayer.clearLayers();
         }
       }
     }
 
-    // ── Leaflet map init ──────────────────────────────────────────────────
+    // ── Leaflet init ──────────────────────────────────────────────────────
+    const urlParams  = new URLSearchParams(location.search);
+    const initLat    = parseFloat(urlParams.get('lat')) || 22.3193;
+    const initLng    = parseFloat(urlParams.get('lng')) || 114.1694;
+    const initZoom   = parseInt(urlParams.get('zoom'))  || (urlParams.get('lat') ? 16 : 12);
+
     const map = L.map('map', {
-      center: [22.3193, 114.1694],
-      zoom: 12,
+      center: [initLat, initLng], zoom: initZoom,
       zoomControl: false,
     });
-
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19,
     }).addTo(map);
-
-    // Move zoom control to top-right (away from header)
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // ── State ─────────────────────────────────────────────────────────────
-    // markerMap: { [parkId]: { marker: L.CircleMarker, park: info, vacancy: v } }
-    const markerMap = {};
+    const meterLayer = L.layerGroup().addTo(map);
+    const markerMap  = {};
     let vacancyTimer = null;
+    let searchCenter = null;
+    let searchPin    = null;
+    let allMeters    = null; // cached meter data
 
-    // ── Dot color from vacancy ────────────────────────────────────────────
+    // ── Carpark dot colour ────────────────────────────────────────────────
     function dotColor(v) {
-      if (!v || v.vacancy_type === 'C' || v.vacancy < 0) return '#9ca3af'; // gray
-      if (v.vacancy === 0)  return '#ef4444'; // red
-      if (v.vacancy < 5)   return '#f97316'; // orange
-      if (v.vacancy <= 20) return '#facc15'; // yellow
-      return '#22c55e'; // green
+      if (!v || v.vacancy_type === 'C' || v.vacancy < 0) return '#9ca3af';
+      if (v.vacancy === 0)  return '#ef4444';
+      if (v.vacancy < 5)   return '#f97316';
+      if (v.vacancy <= 20) return '#facc15';
+      return '#22c55e';
     }
 
-    // ── Popup HTML ────────────────────────────────────────────────────────
-    function popupHtml(park, v) {
+    // ── Carpark popup ─────────────────────────────────────────────────────
+    function carparkPopupHtml(park, v) {
       const name    = parkName(park);
       const address = parkAddress(park);
       const isClosed = !v || v.vacancy_type === 'C' || v.vacancy < 0;
@@ -206,10 +231,9 @@
       const badgeClass = style ? style.badge : 'bg-gray-100 text-gray-400';
       const numClass   = style ? style.num   : 'text-gray-300';
       const label      = style ? style.label : t('closed');
-      const spacesStr  = isClosed ? '' : (getLang() === 'en' ? ` ${t('spaces')}` : `${t('spaces')}`);
-
+      const spacesStr  = isClosed ? '' : (getLang() === 'en' ? t('spaces') : t('spaces'));
       return `
-        <div style="min-width:190px; font-family:-apple-system,sans-serif;">
+        <div style="min-width:190px;font-family:-apple-system,sans-serif;">
           <div style="padding:12px 14px 10px">
             <p style="font-size:13px;font-weight:700;color:#111;margin:0 0 2px;line-height:1.3">${name}</p>
             <p style="font-size:11px;color:#9ca3af;margin:0">${address}</p>
@@ -230,77 +254,187 @@
         </div>`;
     }
 
-    // ── Create / update markers ────────────────────────────────────────────
+    // ── Carpark markers ───────────────────────────────────────────────────
     function buildMarkers(allInfo, allVacancy) {
       allInfo.forEach(park => {
         const lat = parseFloat(park.latitude);
         const lng = parseFloat(park.longitude);
         if (!lat || !lng) return;
-
         const v     = getParkVacancy(park.park_id, allVacancy);
         const color = dotColor(v);
-
         if (markerMap[park.park_id]) {
-          // Update existing marker color & popup
           const { marker } = markerMap[park.park_id];
           marker.setStyle({ fillColor: color, color });
-          marker.setPopupContent(popupHtml(park, v));
-          markerMap[park.park_id].vacancy = v;
+          marker.setPopupContent(carparkPopupHtml(park, v));
         } else {
-          // Create new CircleMarker
           const marker = L.circleMarker([lat, lng], {
-            radius: 9,
-            fillColor: color,
-            color: color,
-            weight: 0,
-            fillOpacity: 1,
-            className: 'cp-marker',
+            radius: 9, fillColor: color, color, weight: 0, fillOpacity: 1,
           }).addTo(map);
-
-          marker.bindPopup(popupHtml(park, v), {
-            maxWidth: 240,
-            minWidth: 190,
-            closeButton: false,
-            offset: [0, -6],
+          marker.bindPopup(carparkPopupHtml(park, v), {
+            maxWidth: 240, minWidth: 190, closeButton: false, offset: [0, -6],
           });
-
           markerMap[park.park_id] = { marker, park, vacancy: v };
         }
       });
     }
 
-    // ── Load data ─────────────────────────────────────────────────────────
+    // ── Meter layer ───────────────────────────────────────────────────────
+    function meterDotColor(m) {
+      if (!m.meterOk)      return '#d1d5db'; // gray – not in use
+      if (m.status === 'V') return '#4ade80'; // green – vacant
+      if (m.status === 'O') return '#f87171'; // red – occupied
+      return '#d1d5db';
+    }
+
+    function showMeterLayer(lat, lng, radiusKm = 0.8) {
+      meterLayer.clearLayers();
+      if (!allMeters) return;
+      let count = 0;
+      allMeters.forEach(m => {
+        if (distanceKm(lat, lng, m.lat, m.lng) > radiusKm) return;
+        count++;
+        const color = meterDotColor(m);
+        const marker = L.circleMarker([m.lat, m.lng], {
+          radius: 5, fillColor: color, color: 'white',
+          weight: 1, fillOpacity: 0.9,
+        });
+        const statusLabel = !m.meterOk ? t('meterOff') : (m.status === 'V' ? t('meterVacant') : m.status === 'O' ? t('meterOccupied') : '—');
+        marker.bindPopup(`
+          <div style="font-family:-apple-system,sans-serif;padding:10px 14px;min-width:150px">
+            <p style="font-size:12px;font-weight:700;color:#111;margin:0 0 3px">${m.street || '—'}</p>
+            <p style="font-size:11px;color:#9ca3af;margin:0 0 8px">${m.district || ''}</p>
+            <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;background:${!m.meterOk ? '#f3f4f6' : m.status === 'V' ? '#dcfce7' : '#fee2e2'};color:${!m.meterOk ? '#9ca3af' : m.status === 'V' ? '#15803d' : '#dc2626'}">${statusLabel}</span>
+          </div>`, { closeButton: false, maxWidth: 200 });
+        meterLayer.addLayer(marker);
+      });
+      return count;
+    }
+
+    // ── Address search ────────────────────────────────────────────────────
+    let searchTimeout = null;
+
+    async function searchAddress() {
+      const query = document.getElementById('addr-input').value.trim();
+      if (!query) return;
+
+      showToast(t('searching'));
+      document.getElementById('search-clear').classList.remove('hidden');
+
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=hk&limit=1&q=${encodeURIComponent(query)}`;
+        const res  = await fetch(url, { headers: { 'Accept-Language': getLang() === 'en' ? 'en' : 'zh' } });
+        const data = await res.json();
+
+        if (!data || data.length === 0) {
+          showToast(t('noAddressResult'), 3000);
+          return;
+        }
+
+        const { lat, lon, display_name } = data[0];
+        const numLat = parseFloat(lat), numLng = parseFloat(lon);
+        searchCenter = { lat: numLat, lng: numLng };
+
+        // Place search pin
+        if (searchPin) map.removeLayer(searchPin);
+        searchPin = L.marker([numLat, numLng], {
+          icon: L.divIcon({
+            html: `<div style="width:14px;height:14px;background:#3b82f6;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(59,130,246,0.6)"></div>`,
+            className: '', iconSize: [14, 14], iconAnchor: [7, 7],
+          }),
+          zIndexOffset: 1000,
+        }).addTo(map);
+
+        map.flyTo([numLat, numLng], 16, { duration: 1 });
+        hideToast();
+
+        // Load meter data if not yet loaded
+        if (showMeters || !allMeters) {
+          if (!allMeters) {
+            showToast(t('loadingMeters'));
+            allMeters = await fetchMeters();
+            hideToast();
+          }
+          if (showMeters) {
+            const count = showMeterLayer(numLat, numLng);
+            // Auto-enable meters layer on first search
+          } else {
+            // Auto-enable meter layer on first address search
+            showMeters = true;
+            document.getElementById('btn-meters').className =
+              'text-[10px] font-semibold px-2 py-1 rounded-lg transition-colors bg-green-500 text-white';
+            document.getElementById('legend-meters').classList.remove('hidden');
+            showMeterLayer(numLat, numLng);
+          }
+        }
+
+      } catch (err) {
+        console.error('[search]', err);
+        showToast(t('noAddressResult'), 3000);
+      }
+    }
+
+    function clearSearch() {
+      document.getElementById('addr-input').value = '';
+      document.getElementById('search-clear').classList.add('hidden');
+      if (searchPin) { map.removeLayer(searchPin); searchPin = null; }
+      meterLayer.clearLayers();
+      showMeters = false;
+      document.getElementById('btn-meters').className =
+        'text-[10px] font-semibold px-2 py-1 rounded-lg transition-colors bg-gray-100 text-gray-500';
+      document.getElementById('legend-meters').classList.add('hidden');
+    }
+
+    // ── Toast helper ──────────────────────────────────────────────────────
+    let toastTimer = null;
+    function showToast(msg, autoDismissMs = 0) {
+      const el = document.getElementById('search-toast');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      if (toastTimer) clearTimeout(toastTimer);
+      if (autoDismissMs) toastTimer = setTimeout(hideToast, autoDismissMs);
+    }
+    function hideToast() {
+      document.getElementById('search-toast').classList.add('hidden');
+    }
+
+    // ── Load carpark data ─────────────────────────────────────────────────
     async function loadMapData() {
       document.getElementById('map-loading').style.display = 'flex';
       document.getElementById('map-error').classList.add('hidden');
-
       try {
         const [infoJson, vacJson] = await Promise.all([fetchAllInfo(), fetchAllVacancy()]);
-        const allInfo = infoJson.car_park || [];
-
-        buildMarkers(allInfo, vacJson);
-
+        buildMarkers(infoJson.car_park || [], vacJson);
         document.getElementById('map-loading').style.display = 'none';
         document.getElementById('legend').classList.remove('hidden');
-
         applyRegionFilter();
 
-        // Start vacancy refresh
+        // If opened from detail page with lat/lng params, place a pin
+        if (urlParams.get('lat')) {
+          const lat = parseFloat(urlParams.get('lat'));
+          const lng = parseFloat(urlParams.get('lng'));
+          searchPin = L.marker([lat, lng], {
+            icon: L.divIcon({
+              html: `<div style="width:14px;height:14px;background:#3b82f6;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(59,130,246,0.6)"></div>`,
+              className: '', iconSize: [14, 14], iconAnchor: [7, 7],
+            }),
+            zIndexOffset: 1000,
+          }).addTo(map);
+        }
+
         clearInterval(vacancyTimer);
         vacancyTimer = setInterval(async () => {
           try {
             const vac = await fetchAllVacancy();
             Object.values(markerMap).forEach(({ marker, park }) => {
-              const v     = getParkVacancy(park.park_id, vac);
-              const color = dotColor(v);
-              marker.setStyle({ fillColor: color, color });
-              marker.setPopupContent(popupHtml(park, v));
+              const v = getParkVacancy(park.park_id, vac);
+              marker.setStyle({ fillColor: dotColor(v), color: dotColor(v) });
+              marker.setPopupContent(carparkPopupHtml(park, v));
             });
           } catch (_) {}
         }, REFRESH_MS);
 
       } catch (err) {
-        console.error('[map] load failed:', err);
+        console.error('[map]', err);
         document.getElementById('map-loading').style.display = 'none';
         document.getElementById('map-error').classList.remove('hidden');
       }
