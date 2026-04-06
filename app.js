@@ -1,10 +1,134 @@
+// ── Language ──────────────────────────────────────────────────────────────
+function getLang() {
+  return localStorage.getItem('lang') || 'tc';
+}
+function setLang(lang) {
+  localStorage.setItem('lang', lang);
+  location.reload();
+}
+function t(key) {
+  return (STRINGS[getLang()] || STRINGS.tc)[key] || key;
+}
+
+// Carpark name / address helpers
+function parkName(park) {
+  return getLang() === 'en' ? (park.name_en || park.name_tc) : (park.name_tc || park.name_en);
+}
+function parkAddress(park) {
+  return getLang() === 'en'
+    ? (park.displayAddress_en || park.displayAddress_tc)
+    : (park.displayAddress_tc || park.displayAddress_en);
+}
+function parkRemark(park) {
+  return getLang() === 'en' ? (park.remark_en || park.remark_tc) : (park.remark_tc || park.remark_en);
+}
+function parkDistrict(park) {
+  return getLang() === 'en' ? (park.district_en || '') : (park.district_tc || park.district_en || '');
+}
+
+// Renders the EN/中 toggle button HTML
+function renderLangToggle() {
+  const lang = getLang();
+  return `
+    <button onclick="setLang('${lang === 'tc' ? 'en' : 'tc'}')"
+      class="text-xs font-semibold text-gray-400 border border-gray-200 rounded-lg px-2.5 py-1 active:bg-gray-100 transition-colors shrink-0">
+      ${lang === 'tc' ? 'EN' : '中'}
+    </button>`;
+}
+
+// ── Strings ───────────────────────────────────────────────────────────────
+const STRINGS = {
+  tc: {
+    // Vacancy status
+    ample: '充裕', limited: '有限', scarce: '極少', full: '滿位', closed: '關閉',
+    // Vehicle types
+    P: '私家車', M: '電單車', L: '輕型貨車', H: '重型貨車', C: '旅遊巴',
+    // Regions
+    hki: '港島', kln: '九龍', nt: '新界', all: '全部',
+    allDistricts: '全區',
+    // Tab bar
+    home: '首頁', list: '列表', map: '地圖',
+    // Index
+    hk: '香港', appTitle: '停車場空位',
+    searchPlaceholder: '搜索停車場名稱或地址…',
+    allCarparks: '全部列表', searchFilter: '搜索 · 篩選地區',
+    mapView: '地圖視圖', comingSoon: '即將推出',
+    favourites: '⭐ 收藏夾', browseAll: '瀏覽全部',
+    noFavourites: '尚無收藏',
+    noFavHint: '在停車場詳情頁點擊 ★ 即可收藏',
+    browseCarparks: '瀏覽停車場',
+    suggested: '📍 推薦',
+    dataSource: '數據來源：香港運輸署開放數據',
+    // List
+    carparks: '停車場', loading: '載入中…',
+    loadError: '無法獲取數據', checkNetwork: '請檢查網絡連接', retry: '重試',
+    countCarparks: n => `共 ${n} 個停車場`,
+    noResults: '找不到相關停車場',
+    // Detail
+    lastUpdated: t => `最後更新：${t}`,
+    lastSuccess: t => `上次成功：${t}`,
+    noConnection: '無法連線',
+    refreshNow: '立即更新',
+    noVacancyData: '暫無空位資料',
+    spaces: '個空位', estimated: '(估算)',
+    evSpaces: n => `⚡ 電動車充電位　${n} 個`,
+    disSpaces: n => `♿ 殘障車位　${n} 個`,
+    rates: '收費資訊', carparkInfo: '停車場資訊',
+    district: '地區', phone: '電話', website: '網站', heightLimit: '車高限制',
+    autoRefresh: '每60秒自動更新',
+    openStatus: '開放中', closedStatus: '已關閉', loadingStatus: '載入中',
+    favourite: '收藏',
+  },
+  en: {
+    // Vacancy status
+    ample: 'Ample', limited: 'Limited', scarce: 'Scarce', full: 'Full', closed: 'Closed',
+    // Vehicle types
+    P: 'Private Car', M: 'Motorcycle', L: 'Light Goods', H: 'Heavy Goods', C: 'Coach',
+    // Regions
+    hki: 'HK Island', kln: 'Kowloon', nt: 'New Territories', all: 'All',
+    allDistricts: 'All Districts',
+    // Tab bar
+    home: 'Home', list: 'List', map: 'Map',
+    // Index
+    hk: 'Hong Kong', appTitle: 'Parking Vacancy',
+    searchPlaceholder: 'Search carpark name or address…',
+    allCarparks: 'All Carparks', searchFilter: 'Search · Filter by district',
+    mapView: 'Map View', comingSoon: 'Coming Soon',
+    favourites: '⭐ Favourites', browseAll: 'Browse All',
+    noFavourites: 'No favourites yet',
+    noFavHint: 'Tap ★ on a carpark detail page to add favourites',
+    browseCarparks: 'Browse Carparks',
+    suggested: '📍 Suggested',
+    dataSource: 'Data: Transport Department, HKSAR',
+    // List
+    carparks: 'Carparks', loading: 'Loading…',
+    loadError: 'Unable to load data', checkNetwork: 'Please check your network connection', retry: 'Retry',
+    countCarparks: n => `${n} carparks`,
+    noResults: 'No carparks found',
+    // Detail
+    lastUpdated: t => `Updated: ${t}`,
+    lastSuccess: t => `Last success: ${t}`,
+    noConnection: 'Connection failed',
+    refreshNow: 'Refresh',
+    noVacancyData: 'No vacancy data available',
+    spaces: ' spaces', estimated: '(est.)',
+    evSpaces: n => `⚡ EV charging　${n} spaces`,
+    disSpaces: n => `♿ Accessible　${n} spaces`,
+    rates: 'Parking Rates', carparkInfo: 'Carpark Info',
+    district: 'District', phone: 'Phone', website: 'Website', heightLimit: 'Height Limit',
+    autoRefresh: 'Auto-refresh every 60s',
+    openStatus: 'Open', closedStatus: 'Closed', loadingStatus: 'Loading',
+    favourite: 'Favourite',
+  },
+};
+
 // ── API ───────────────────────────────────────────────────────────────────
 const INFO_URL    = 'https://resource.data.one.gov.hk/td/carpark/basic_info_all.json';
 const VACANCY_URL = 'https://resource.data.one.gov.hk/td/carpark/vacancy_all.json';
 const REFRESH_MS  = 60_000;
 
-// ── Labels ────────────────────────────────────────────────────────────────
-const VEHICLE_LABELS = { P: '私家車', M: '電單車', L: '輕型貨車', H: '重型貨車', C: '旅遊巴' };
+// ── Labels (use t() at runtime) ───────────────────────────────────────────
+function vehicleLabel(type) { return t(type) || type; }
 
 const DISTRICT_LABELS = {
   'Central & Western': '中西區',
@@ -70,14 +194,14 @@ function toggleFavourite(parkId) {
 // ── Vacancy styling ───────────────────────────────────────────────────────
 function vacancyStyle(vacancy, vacancyType) {
   if (vacancyType === 'C' || vacancy < 0)
-    return { label: '關閉', bg: 'bg-gray-50', badge: 'bg-gray-100 text-gray-400', num: 'text-gray-300', dot: 'bg-gray-300' };
+    return { label: t('closed'),  bg: 'bg-gray-50',   badge: 'bg-gray-100 text-gray-400',    num: 'text-gray-300',   dot: 'bg-gray-300' };
   if (vacancy === 0)
-    return { label: '滿位', bg: 'bg-red-50',    badge: 'bg-red-100 text-red-600',      num: 'text-red-500',    dot: 'bg-red-400' };
+    return { label: t('full'),    bg: 'bg-red-50',    badge: 'bg-red-100 text-red-600',       num: 'text-red-500',    dot: 'bg-red-400' };
   if (vacancy < 5)
-    return { label: '極少', bg: 'bg-orange-50', badge: 'bg-orange-100 text-orange-600', num: 'text-orange-500', dot: 'bg-orange-400' };
+    return { label: t('scarce'),  bg: 'bg-orange-50', badge: 'bg-orange-100 text-orange-600', num: 'text-orange-500', dot: 'bg-orange-400' };
   if (vacancy <= 20)
-    return { label: '有限', bg: 'bg-yellow-50', badge: 'bg-yellow-100 text-yellow-700', num: 'text-yellow-600', dot: 'bg-yellow-400' };
-  return        { label: '充裕', bg: 'bg-green-50',  badge: 'bg-green-100 text-green-700',  num: 'text-green-600',  dot: 'bg-green-500' };
+    return { label: t('limited'), bg: 'bg-yellow-50', badge: 'bg-yellow-100 text-yellow-700', num: 'text-yellow-600', dot: 'bg-yellow-400' };
+  return        { label: t('ample'),  bg: 'bg-green-50',  badge: 'bg-green-100 text-green-700',  num: 'text-green-600',  dot: 'bg-green-500' };
 }
 
 // ── Get private-car vacancy for a park from vacancy_all data ──────────────
@@ -134,9 +258,9 @@ async function fetchAllVacancy() {
 // ── Tab bar HTML (injected into each page) ────────────────────────────────
 function renderTabBar(active) {
   const tabs = [
-    { id: 'home', href: 'index.html',  icon: '⊙', label: '首頁'  },
-    { id: 'list', href: 'list.html',   icon: '☰', label: '列表'  },
-    { id: 'map',  href: 'map.html',    icon: '◎', label: '地圖'  },
+    { id: 'home', href: 'index.html',  icon: '⊙', label: t('home') },
+    { id: 'list', href: 'list.html',   icon: '☰', label: t('list') },
+    { id: 'map',  href: 'map.html',    icon: '◎', label: t('map')  },
   ];
   return `
     <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-20 pb-safe">

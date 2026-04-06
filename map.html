@@ -11,19 +11,24 @@
 </head>
 <body class="bg-gray-50 min-h-screen">
   <header class="bg-white border-b border-gray-100">
-    <div class="max-w-md mx-auto px-4 py-4">
-      <h1 class="text-base font-bold text-gray-900">地圖視圖</h1>
+    <div class="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
+      <h1 id="txt-map-view" class="text-base font-bold text-gray-900"></h1>
+      <div id="lang-toggle"></div>
     </div>
   </header>
   <main class="max-w-md mx-auto px-4 py-16 text-center">
     <p class="text-5xl mb-4">◎</p>
-    <p class="text-base font-semibold text-gray-700">地圖視圖</p>
-    <p class="text-sm text-gray-400 mt-2">即將推出</p>
+    <p id="txt-map-view2" class="text-base font-semibold text-gray-700"></p>
+    <p id="txt-coming-soon" class="text-sm text-gray-400 mt-2"></p>
   </main>
   <div id="tab-bar"></div>
   <script>
     document.getElementById('shared-style').textContent = SHARED_STYLE;
     document.getElementById('tab-bar').innerHTML = renderTabBar('map');
+    document.getElementById('lang-toggle').innerHTML = renderLangToggle();
+    document.getElementById('txt-map-view').textContent  = t('mapView');
+    document.getElementById('txt-map-view2').textContent = t('mapView');
+    document.getElementById('txt-coming-soon').textContent = t('comingSoon');
   </script>
 </body>
 </html>

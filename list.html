@@ -8,50 +8,32 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="app.js"></script>
   <style id="shared-style"></style>
-  <style>
-    .no-scrollbar { scrollbar-width: none; }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-  </style>
+  <style>.no-scrollbar{scrollbar-width:none}.no-scrollbar::-webkit-scrollbar{display:none}</style>
 </head>
 <body class="bg-gray-50 min-h-screen">
 
-  <!-- Header -->
   <header class="bg-white border-b border-gray-100 sticky top-0 z-10">
     <div class="max-w-md mx-auto px-4 pt-3 pb-0">
-      <h1 class="text-base font-bold text-gray-900 mb-2">停車場</h1>
-      <!-- Search box -->
+      <div class="flex items-center justify-between mb-2">
+        <h1 id="txt-carparks" class="text-base font-bold text-gray-900"></h1>
+        <div id="lang-toggle"></div>
+      </div>
       <div class="relative mb-2">
         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-sm">🔍</span>
-        <input
-          id="search-input"
-          type="search"
-          placeholder="搜索停車場名稱或地址…"
+        <input id="search-input" type="search"
           class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-8 pr-4 py-2 text-sm outline-none focus:border-blue-300 focus:bg-white transition-colors"
-          oninput="onSearch()"
-        >
+          oninput="onSearch()">
       </div>
     </div>
-
-    <!-- Region tabs: 港島 / 九龍 / 新界 / 全部 -->
-    <div class="max-w-md mx-auto px-4 flex gap-0 border-b border-gray-100">
-      <button data-region="hki" onclick="selectRegion(this)"
-        class="region-tab flex-1 text-xs font-semibold py-2 border-b-2 border-blue-500 text-blue-500">港島</button>
-      <button data-region="kln" onclick="selectRegion(this)"
-        class="region-tab flex-1 text-xs font-semibold py-2 border-b-2 border-transparent text-gray-400">九龍</button>
-      <button data-region="nt"  onclick="selectRegion(this)"
-        class="region-tab flex-1 text-xs font-semibold py-2 border-b-2 border-transparent text-gray-400">新界</button>
-      <button data-region=""    onclick="selectRegion(this)"
-        class="region-tab flex-1 text-xs font-semibold py-2 border-b-2 border-transparent text-gray-400">全部</button>
-    </div>
-
-    <!-- District chips (sub-filter within region) -->
+    <!-- Region tabs -->
+    <div class="max-w-md mx-auto px-4 flex gap-0 border-b border-gray-100" id="region-tabs"></div>
+    <!-- District chips -->
     <div id="district-chips" class="flex gap-2 overflow-x-auto no-scrollbar px-4 py-2"></div>
   </header>
 
   <main class="max-w-md mx-auto px-4 py-3">
-    <p id="result-count" class="text-xs text-gray-400 mb-3">載入中…</p>
+    <p id="result-count" class="text-xs text-gray-400 mb-3"></p>
 
-    <!-- Loading skeletons -->
     <div id="loading" class="space-y-2">
       <div class="bg-white rounded-2xl p-4 flex items-center justify-between">
         <div class="space-y-2 flex-1"><div class="h-3.5 bg-gray-100 rounded w-36 animate-pulse"></div><div class="h-3 bg-gray-100 rounded w-48 animate-pulse"></div></div>
@@ -67,21 +49,18 @@
       </div>
     </div>
 
-    <!-- Error state -->
     <div id="error" class="hidden bg-red-50 border border-red-100 rounded-2xl p-6 text-center mt-4">
       <p class="text-2xl mb-2">📡</p>
-      <p class="text-sm font-semibold text-red-700">無法獲取數據</p>
-      <p class="text-xs text-red-400 mt-1">請檢查網絡連接</p>
-      <button onclick="loadData()" class="mt-3 text-xs text-red-500 border border-red-200 rounded-lg px-4 py-1.5">重試</button>
+      <p id="txt-load-error" class="text-sm font-semibold text-red-700"></p>
+      <p id="txt-check-network" class="text-xs text-red-400 mt-1"></p>
+      <button id="txt-retry" onclick="loadData()" class="mt-3 text-xs text-red-500 border border-red-200 rounded-lg px-4 py-1.5"></button>
     </div>
 
-    <!-- Carpark list -->
     <div id="carpark-list" class="hidden space-y-2"></div>
 
-    <!-- Empty -->
     <div id="empty" class="hidden text-center py-12">
       <p class="text-3xl mb-2">🅿️</p>
-      <p class="text-sm text-gray-400">找不到相關停車場</p>
+      <p id="txt-no-results" class="text-sm text-gray-400"></p>
     </div>
   </main>
 
@@ -90,16 +69,43 @@
   <script>
     document.getElementById('shared-style').textContent = SHARED_STYLE;
     document.getElementById('tab-bar').innerHTML = renderTabBar('list');
+    document.getElementById('lang-toggle').innerHTML = renderLangToggle();
+
+    // Static i18n
+    document.getElementById('txt-carparks').textContent      = t('carparks');
+    document.getElementById('search-input').placeholder      = t('searchPlaceholder');
+    document.getElementById('txt-load-error').textContent    = t('loadError');
+    document.getElementById('txt-check-network').textContent = t('checkNetwork');
+    document.getElementById('txt-retry').textContent         = t('retry');
+    document.getElementById('txt-no-results').textContent    = t('noResults');
+    document.getElementById('result-count').textContent      = t('loading');
+
+    // Build region tabs
+    const regionTabsEl = document.getElementById('region-tabs');
+    REGIONS.forEach((r, i) => {
+      const btn = document.createElement('button');
+      btn.dataset.region = r.id;
+      btn.onclick = () => selectRegion(btn);
+      btn.className = `region-tab flex-1 text-xs font-semibold py-2 border-b-2 ${i === 0 ? 'border-blue-500 text-blue-500' : 'border-transparent text-gray-400'}`;
+      btn.textContent = t(r.id);
+      regionTabsEl.appendChild(btn);
+    });
+    // "All" tab
+    const allBtn = document.createElement('button');
+    allBtn.dataset.region = '';
+    allBtn.onclick = () => selectRegion(allBtn);
+    allBtn.className = 'region-tab flex-1 text-xs font-semibold py-2 border-b-2 border-transparent text-gray-400';
+    allBtn.textContent = t('all');
+    regionTabsEl.appendChild(allBtn);
 
     // ── State ─────────────────────────────────────────────────────────────
     let allInfo        = [];
     let allVacancy     = null;
-    let selectedRegion = 'hki';   // default: 港島
-    let selectedDist   = null;    // null = all districts in region
+    let selectedRegion = 'hki';
+    let selectedDist   = null;
     let searchQuery    = '';
     let vacancyTimer   = null;
 
-    // ── Boot ──────────────────────────────────────────────────────────────
     async function loadData() {
       document.getElementById('error').classList.add('hidden');
       document.getElementById('loading').classList.remove('hidden');
@@ -125,7 +131,6 @@
       try { allVacancy = await fetchAllVacancy(); renderList(); } catch (_) {}
     }
 
-    // ── Region tabs ───────────────────────────────────────────────────────
     function selectRegion(btn) {
       selectedRegion = btn.dataset.region;
       selectedDist   = null;
@@ -137,30 +142,22 @@
       renderList();
     }
 
-    // ── District chips ────────────────────────────────────────────────────
     function buildDistrictChips() {
-      const container = document.getElementById('district-chips');
-      const regionDists = getRegionDistricts(selectedRegion); // null if "全部"
+      const container  = document.getElementById('district-chips');
+      const regionDists = getRegionDistricts(selectedRegion);
+      if (!regionDists) { container.innerHTML = ''; return; }
 
-      if (!regionDists) {
-        container.innerHTML = '';
-        return;
-      }
-
-      // Only show districts that actually have carparks in the data
       const available = regionDists.filter(d => allInfo.some(p => p.district_en === d));
-
       container.innerHTML = [
         `<button data-dist="" onclick="selectDistrict(this)"
           class="dist-chip shrink-0 text-xs font-medium px-3 py-1 rounded-full ${!selectedDist ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}">
-          全區
+          ${t('allDistricts')}
         </button>`,
         ...available.map(d => `
           <button data-dist="${d}" onclick="selectDistrict(this)"
             class="dist-chip shrink-0 text-xs font-medium px-3 py-1 rounded-full ${selectedDist === d ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}">
-            ${DISTRICT_LABELS[d] || d}
-          </button>
-        `)
+            ${getLang() === 'en' ? (d) : (DISTRICT_LABELS[d] || d)}
+          </button>`)
       ].join('');
     }
 
@@ -173,27 +170,23 @@
       renderList();
     }
 
-    // ── Search ────────────────────────────────────────────────────────────
     function onSearch() {
       searchQuery = document.getElementById('search-input').value;
       renderList();
     }
 
-    // ── Effective district filter ─────────────────────────────────────────
     function effectiveDistricts() {
       if (selectedDist) return [selectedDist];
-      const regionDists = getRegionDistricts(selectedRegion);
-      return regionDists || null; // null = no filter (全部)
+      return getRegionDistricts(selectedRegion) || null;
     }
 
-    // ── Render ────────────────────────────────────────────────────────────
     function renderList() {
       const results = searchCarparks(searchQuery, effectiveDistricts(), allInfo);
       const countEl = document.getElementById('result-count');
       const listEl  = document.getElementById('carpark-list');
       const emptyEl = document.getElementById('empty');
 
-      countEl.textContent = `共 ${results.length} 個停車場`;
+      countEl.textContent = t('countCarparks')(results.length);
 
       if (results.length === 0) {
         listEl.classList.add('hidden');
@@ -216,7 +209,7 @@
              </div>`
           : `<div class="shrink-0 ml-3 w-10 h-8 bg-gray-100 rounded-xl animate-pulse"></div>`;
 
-        const distLabel = DISTRICT_LABELS[park.district_en] || park.district_en || '';
+        const distLabel = getLang() === 'en' ? (park.district_en || '') : (DISTRICT_LABELS[park.district_en] || park.district_en || '');
         const statusDot = park.opening_status === 'OPEN'
           ? `<span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block mr-1"></span>`
           : `<span class="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block mr-1"></span>`;
@@ -225,8 +218,8 @@
         return `
           <a href="detail.html?id=${park.park_id}" class="fade-in bg-white rounded-2xl p-4 flex items-center active:bg-gray-50 transition-colors block">
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-semibold text-gray-900 truncate">${park.name_tc || park.name_en}${favStar}</p>
-              <p class="text-xs text-gray-400 truncate mt-0.5">${park.displayAddress_tc || park.displayAddress_en || ''}</p>
+              <p class="text-sm font-semibold text-gray-900 truncate">${parkName(park)}${favStar}</p>
+              <p class="text-xs text-gray-400 truncate mt-0.5">${parkAddress(park)}</p>
               <p class="text-xs text-gray-300 mt-1">${statusDot}${distLabel}</p>
             </div>
             ${badgeHtml}

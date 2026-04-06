@@ -12,41 +12,40 @@
 </head>
 <body class="bg-gray-50 min-h-screen">
 
-  <!-- Header -->
   <header class="bg-white border-b border-gray-100">
-    <div class="max-w-md mx-auto px-4 py-4">
-      <p class="text-xs text-gray-400 font-medium tracking-wide uppercase">香港</p>
-      <h1 class="text-xl font-bold text-gray-900 mt-0.5">停車場空位</h1>
+    <div class="max-w-md mx-auto px-4 py-4 flex items-start justify-between">
+      <div>
+        <p id="txt-region" class="text-xs text-gray-400 font-medium tracking-wide uppercase"></p>
+        <h1 id="txt-title" class="text-xl font-bold text-gray-900 mt-0.5"></h1>
+      </div>
+      <div id="lang-toggle" class="mt-1"></div>
     </div>
   </header>
 
   <main class="max-w-md mx-auto px-4 py-4 space-y-5">
 
-    <!-- Search shortcut -->
     <a href="list.html" class="flex items-center gap-3 bg-white rounded-2xl px-4 py-3 shadow-sm active:bg-gray-50 transition-colors">
       <span class="text-gray-300">🔍</span>
-      <span class="text-sm text-gray-400">搜索停車場名稱或地址…</span>
+      <span id="txt-search-placeholder" class="text-sm text-gray-400"></span>
     </a>
 
-    <!-- Quick links -->
     <div class="grid grid-cols-2 gap-3">
       <a href="list.html" class="bg-blue-500 rounded-2xl p-4 text-white active:bg-blue-600 transition-colors">
         <p class="text-2xl mb-1">☰</p>
-        <p class="text-sm font-semibold">全部列表</p>
-        <p class="text-xs text-blue-200 mt-0.5">搜索 · 篩選地區</p>
+        <p id="txt-all-carparks" class="text-sm font-semibold"></p>
+        <p id="txt-search-filter" class="text-xs text-blue-200 mt-0.5"></p>
       </a>
       <a href="map.html" class="bg-white rounded-2xl p-4 text-gray-700 shadow-sm active:bg-gray-50 transition-colors">
         <p class="text-2xl mb-1">◎</p>
-        <p class="text-sm font-semibold">地圖視圖</p>
-        <p class="text-xs text-gray-400 mt-0.5">即將推出</p>
+        <p id="txt-map-view" class="text-sm font-semibold"></p>
+        <p id="txt-coming-soon" class="text-xs text-gray-400 mt-0.5"></p>
       </a>
     </div>
 
-    <!-- Favourites section -->
     <div>
       <div class="flex items-center justify-between mb-2">
-        <h2 class="text-sm font-semibold text-gray-700">⭐ 收藏夾</h2>
-        <a href="list.html" class="text-xs text-blue-500">瀏覽全部</a>
+        <h2 id="txt-favourites" class="text-sm font-semibold text-gray-700"></h2>
+        <a id="txt-browse-all" href="list.html" class="text-xs text-blue-500"></a>
       </div>
       <div id="fav-loading" class="hidden space-y-2">
         <div class="bg-white rounded-2xl p-4 h-16 animate-pulse"></div>
@@ -54,20 +53,19 @@
       </div>
       <div id="fav-empty" class="bg-white rounded-2xl p-6 text-center shadow-sm">
         <p class="text-2xl mb-2">🅿️</p>
-        <p class="text-sm text-gray-400">尚無收藏</p>
-        <p class="text-xs text-gray-300 mt-1">在停車場詳情頁點擊 ★ 即可收藏</p>
-        <a href="list.html" class="inline-block mt-3 text-xs text-blue-500 border border-blue-200 rounded-lg px-4 py-1.5">瀏覽停車場</a>
+        <p id="txt-no-fav" class="text-sm text-gray-400"></p>
+        <p id="txt-no-fav-hint" class="text-xs text-gray-300 mt-1"></p>
+        <a id="txt-browse-carparks" href="list.html" class="inline-block mt-3 text-xs text-blue-500 border border-blue-200 rounded-lg px-4 py-1.5"></a>
       </div>
       <div id="fav-list" class="hidden space-y-2"></div>
     </div>
 
-    <!-- Recent / suggested (static for now) -->
     <div>
-      <h2 class="text-sm font-semibold text-gray-700 mb-2">📍 推薦</h2>
+      <h2 id="txt-suggested" class="text-sm font-semibold text-gray-700 mb-2"></h2>
       <div id="suggested-list" class="space-y-2"></div>
     </div>
 
-    <p class="text-center text-xs text-gray-300 pb-6">數據來源：香港運輸署開放數據</p>
+    <p id="txt-data-source" class="text-center text-xs text-gray-300 pb-6"></p>
   </main>
 
   <div id="tab-bar"></div>
@@ -75,48 +73,70 @@
   <script>
     document.getElementById('shared-style').textContent = SHARED_STYLE;
     document.getElementById('tab-bar').innerHTML = renderTabBar('home');
+    document.getElementById('lang-toggle').innerHTML = renderLangToggle();
 
-    // Suggested parks (hardcoded for now, will be replaced by favourites logic in module 2)
+    // Apply i18n strings
+    document.getElementById('txt-region').textContent           = t('hk');
+    document.getElementById('txt-title').textContent            = t('appTitle');
+    document.getElementById('txt-search-placeholder').textContent = t('searchPlaceholder');
+    document.getElementById('txt-all-carparks').textContent     = t('allCarparks');
+    document.getElementById('txt-search-filter').textContent    = t('searchFilter');
+    document.getElementById('txt-map-view').textContent         = t('mapView');
+    document.getElementById('txt-coming-soon').textContent      = t('comingSoon');
+    document.getElementById('txt-favourites').textContent       = t('favourites');
+    document.getElementById('txt-browse-all').textContent       = t('browseAll');
+    document.getElementById('txt-no-fav').textContent           = t('noFavourites');
+    document.getElementById('txt-no-fav-hint').textContent      = t('noFavHint');
+    document.getElementById('txt-browse-carparks').textContent  = t('browseCarparks');
+    document.getElementById('txt-suggested').textContent        = t('suggested');
+    document.getElementById('txt-data-source').textContent      = t('dataSource');
+
     const SUGGESTED = [
-      { id: 'tdc114p1', name: '中山紀念公園停車場', address: '西營盤東邊街北16號' },
-      { id: 'tdcp5',    name: '大會堂停車場',       address: '愛丁堡廣場' },
-      { id: 'tdcp7',    name: '堅尼地城停車場',     address: '堅尼地城石山街12號' },
+      { id: 'tdc114p1' },
+      { id: 'tdcp5'    },
+      { id: 'tdcp7'    },
     ];
 
     async function loadSuggested() {
       const listEl = document.getElementById('suggested-list');
+      // Show skeletons first
       listEl.innerHTML = SUGGESTED.map(p => `
-        <a href="detail.html?id=${p.id}" class="fade-in bg-white rounded-2xl p-4 flex items-center justify-between active:bg-gray-50 transition-colors block shadow-sm">
-          <div class="min-w-0">
-            <p class="text-sm font-semibold text-gray-900 truncate">${p.name}</p>
-            <p class="text-xs text-gray-400 truncate mt-0.5">${p.address}</p>
+        <div class="bg-white rounded-2xl p-4 flex items-center justify-between shadow-sm">
+          <div class="space-y-2 flex-1">
+            <div class="h-3.5 bg-gray-100 rounded w-36 animate-pulse"></div>
+            <div class="h-3 bg-gray-100 rounded w-48 animate-pulse"></div>
           </div>
-          <div id="sug-vacancy-${p.id}" class="shrink-0 ml-3 text-right">
-            <div class="h-6 w-10 bg-gray-100 rounded-lg animate-pulse"></div>
-          </div>
-        </a>
-      `).join('');
+          <div class="h-8 w-10 bg-gray-100 rounded-xl animate-pulse ml-3"></div>
+        </div>`).join('');
 
-      // Load vacancy for each
       try {
-        const vacJson = await fetchAllVacancy();
-        SUGGESTED.forEach(p => {
-          const el = document.getElementById(`sug-vacancy-${p.id}`);
-          if (!el) return;
-          const v = getParkVacancy(p.id, vacJson);
-          if (!v) { el.innerHTML = ''; return; }
-          const style = vacancyStyle(v.vacancy, v.vacancy_type);
-          const isClosed = v.vacancy_type === 'C' || v.vacancy < 0;
-          el.innerHTML = `
-            <span class="text-xl font-bold ${style.num}">${isClosed ? '—' : v.vacancy}</span>
-            <p class="text-[10px] ${style.num}">${style.label}</p>
-          `;
-        });
+        const [infoJson, vacJson] = await Promise.all([fetchAllInfo(), fetchAllVacancy()]);
+        const allParks = infoJson.car_park || [];
+        listEl.innerHTML = SUGGESTED.map(p => {
+          const park = allParks.find(q => q.park_id === p.id);
+          if (!park) return '';
+          const v      = getParkVacancy(p.id, vacJson);
+          const style  = v ? vacancyStyle(v.vacancy, v.vacancy_type) : null;
+          const closed = !v || v.vacancy_type === 'C' || v.vacancy < 0;
+          const badge  = style
+            ? `<div class="shrink-0 ml-3 text-center">
+                 <span class="text-xl font-bold leading-none ${style.num}">${closed ? '—' : v.vacancy}</span>
+                 <p class="text-[10px] ${style.num} mt-0.5">${style.label}</p>
+               </div>`
+            : '';
+          return `
+            <a href="detail.html?id=${p.id}" class="fade-in bg-white rounded-2xl p-4 flex items-center shadow-sm active:bg-gray-50 transition-colors block">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-gray-900 truncate">${parkName(park)}</p>
+                <p class="text-xs text-gray-400 truncate mt-0.5">${parkAddress(park)}</p>
+              </div>${badge}
+            </a>`;
+        }).join('');
       } catch (_) {}
     }
 
     async function loadFavourites() {
-      const favIds = getFavourites();
+      const favIds     = getFavourites();
       const favEmptyEl = document.getElementById('fav-empty');
       const favListEl  = document.getElementById('fav-list');
       const favLoadEl  = document.getElementById('fav-loading');
@@ -131,7 +151,6 @@
       try {
         const [infoJson, vacJson] = await Promise.all([fetchAllInfo(), fetchAllVacancy()]);
         const allParks = infoJson.car_park || [];
-
         favLoadEl.classList.add('hidden');
         favListEl.classList.remove('hidden');
         favListEl.innerHTML = favIds.map(id => {
@@ -149,8 +168,8 @@
           return `
             <a href="detail.html?id=${id}" class="fade-in bg-white rounded-2xl p-4 flex items-center shadow-sm active:bg-gray-50 transition-colors block">
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold text-gray-900 truncate">★ ${park.name_tc || park.name_en}</p>
-                <p class="text-xs text-gray-400 truncate mt-0.5">${park.displayAddress_tc || ''}</p>
+                <p class="text-sm font-semibold text-gray-900 truncate">★ ${parkName(park)}</p>
+                <p class="text-xs text-gray-400 truncate mt-0.5">${parkAddress(park)}</p>
               </div>${badge}
             </a>`;
         }).join('');
