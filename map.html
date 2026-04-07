@@ -40,13 +40,17 @@
         <div id="lang-toggle"></div>
       </div>
       <!-- Row 2: address search -->
-      <div class="relative">
+      <div id="search-wrapper" class="relative">
         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-sm pointer-events-none">🔍</span>
         <input id="addr-input" type="search" autocomplete="off"
-          class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-8 pr-4 py-2 text-sm outline-none focus:border-blue-300 focus:bg-white transition-colors"
-          onkeydown="if(event.key==='Enter') searchAddress()">
+          class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-8 pr-8 py-2 text-sm outline-none focus:border-blue-300 focus:bg-white transition-colors"
+          onkeydown="if(event.key==='Enter'){hideDropdown();searchAddress()}">
         <button id="search-clear" onclick="clearSearch()"
           class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 text-lg leading-none">×</button>
+        <!-- Autocomplete dropdown -->
+        <div id="addr-dropdown"
+          class="hidden absolute left-0 right-0 top-full mt-1 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50">
+        </div>
       </div>
     </div>
     <!-- Row 3: region tabs + layer toggle -->
@@ -310,67 +314,129 @@
       return count;
     }
 
-    // ── Address search ────────────────────────────────────────────────────
-    let searchTimeout = null;
+    // ── Google API key ────────────────────────────────────────────────────
+    const GAPI_KEY = 'AIzaSyDnBWVIKVSJ-bgNV6IGfXn-gc43XOKN6V0';
 
+    // ── Autocomplete dropdown ─────────────────────────────────────────────
+    let autocompleteTimer = null;
+    let lastSuggestions   = [];
+
+    document.getElementById('addr-input').addEventListener('input', () => {
+      const q = document.getElementById('addr-input').value.trim();
+      document.getElementById('search-clear').classList.toggle('hidden', !q);
+      clearTimeout(autocompleteTimer);
+      if (q.length < 2) { hideDropdown(); return; }
+      autocompleteTimer = setTimeout(() => fetchSuggestions(q), 300);
+    });
+
+    document.getElementById('addr-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') { hideDropdown(); searchAddress(); }
+      if (e.key === 'Escape') { hideDropdown(); }
+    });
+
+    // Close dropdown when tapping outside
+    document.addEventListener('click', e => {
+      if (!e.target.closest('#search-wrapper')) hideDropdown();
+    });
+
+    async function fetchSuggestions(query) {
+      try {
+        const lang   = getLang() === 'en' ? 'en' : 'zh-HK';
+        const url    = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&components=country:hk&language=${lang}&key=${GAPI_KEY}`;
+        const res    = await fetch(url);
+        const data   = await res.json();
+        if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') throw new Error(data.status);
+        lastSuggestions = data.predictions || [];
+        renderDropdown(lastSuggestions);
+      } catch (err) {
+        console.warn('[autocomplete]', err);
+        hideDropdown();
+      }
+    }
+
+    function renderDropdown(predictions) {
+      const dd = document.getElementById('addr-dropdown');
+      if (!predictions.length) { hideDropdown(); return; }
+      dd.innerHTML = predictions.map((p, i) => `
+        <div onclick="selectSuggestion(${i})"
+          class="px-4 py-3 text-sm text-gray-800 active:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0 leading-tight">
+          <p class="font-medium">${p.structured_formatting?.main_text || p.description}</p>
+          <p class="text-xs text-gray-400 mt-0.5">${p.structured_formatting?.secondary_text || ''}</p>
+        </div>`).join('');
+      dd.classList.remove('hidden');
+    }
+
+    function hideDropdown() {
+      document.getElementById('addr-dropdown').classList.add('hidden');
+    }
+
+    async function selectSuggestion(idx) {
+      const pred = lastSuggestions[idx];
+      if (!pred) return;
+      document.getElementById('addr-input').value = pred.structured_formatting?.main_text || pred.description;
+      hideDropdown();
+      await geocodePlaceId(pred.place_id);
+    }
+
+    async function geocodePlaceId(placeId) {
+      showToast(t('searching'));
+      try {
+        const url  = `https://maps.googleapis.com/maps/api/geocode/json?place_id=${placeId}&key=${GAPI_KEY}`;
+        const res  = await fetch(url);
+        const data = await res.json();
+        if (!data.results?.length) throw new Error('no result');
+        const loc    = data.results[0].geometry.location;
+        await flyToAndShowMeters(loc.lat, loc.lng);
+      } catch (err) {
+        console.error('[geocode place_id]', err);
+        showToast(t('noAddressResult'), 3000);
+      }
+    }
+
+    // ── Address search (fallback for manual Enter) ────────────────────────
     async function searchAddress() {
       const query = document.getElementById('addr-input').value.trim();
       if (!query) return;
-
       showToast(t('searching'));
-      document.getElementById('search-clear').classList.remove('hidden');
-
       try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=hk&limit=1&q=${encodeURIComponent(query)}`;
-        const res  = await fetch(url, { headers: { 'Accept-Language': getLang() === 'en' ? 'en' : 'zh' } });
+        const lang = getLang() === 'en' ? 'en' : 'zh-HK';
+        const url  = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&components=country:hk&language=${lang}&key=${GAPI_KEY}`;
+        const res  = await fetch(url);
         const data = await res.json();
-
-        if (!data || data.length === 0) {
-          showToast(t('noAddressResult'), 3000);
-          return;
-        }
-
-        const { lat, lon, display_name } = data[0];
-        const numLat = parseFloat(lat), numLng = parseFloat(lon);
-        searchCenter = { lat: numLat, lng: numLng };
-
-        // Place search pin
-        if (searchPin) map.removeLayer(searchPin);
-        searchPin = L.marker([numLat, numLng], {
-          icon: L.divIcon({
-            html: `<div style="width:14px;height:14px;background:#3b82f6;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(59,130,246,0.6)"></div>`,
-            className: '', iconSize: [14, 14], iconAnchor: [7, 7],
-          }),
-          zIndexOffset: 1000,
-        }).addTo(map);
-
-        map.flyTo([numLat, numLng], 16, { duration: 1 });
-        hideToast();
-
-        // Load meter data if not yet loaded
-        if (showMeters || !allMeters) {
-          if (!allMeters) {
-            showToast(t('loadingMeters'));
-            allMeters = await fetchMeters();
-            hideToast();
-          }
-          if (showMeters) {
-            const count = showMeterLayer(numLat, numLng);
-            // Auto-enable meters layer on first search
-          } else {
-            // Auto-enable meter layer on first address search
-            showMeters = true;
-            document.getElementById('btn-meters').className =
-              'text-[10px] font-semibold px-2 py-1 rounded-lg transition-colors bg-green-500 text-white';
-            document.getElementById('legend-meters').classList.remove('hidden');
-            showMeterLayer(numLat, numLng);
-          }
-        }
-
+        if (data.status !== 'OK' || !data.results?.length) throw new Error(data.status);
+        const loc = data.results[0].geometry.location;
+        await flyToAndShowMeters(loc.lat, loc.lng);
       } catch (err) {
-        console.error('[search]', err);
+        console.error('[geocode]', err);
         showToast(t('noAddressResult'), 3000);
       }
+    }
+
+    async function flyToAndShowMeters(numLat, numLng) {
+      searchCenter = { lat: numLat, lng: numLng };
+      if (searchPin) map.removeLayer(searchPin);
+      searchPin = L.marker([numLat, numLng], {
+        icon: L.divIcon({
+          html: `<div style="width:14px;height:14px;background:#3b82f6;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(59,130,246,0.6)"></div>`,
+          className: '', iconSize: [14, 14], iconAnchor: [7, 7],
+        }),
+        zIndexOffset: 1000,
+      }).addTo(map);
+      map.flyTo([numLat, numLng], 16, { duration: 1 });
+      hideToast();
+
+      // Load meters if needed
+      if (!allMeters) {
+        showToast(t('loadingMeters'));
+        allMeters = await fetchMeters();
+        hideToast();
+      }
+      // Auto-enable meter layer
+      showMeters = true;
+      document.getElementById('btn-meters').className =
+        'text-[10px] font-semibold px-2 py-1 rounded-lg transition-colors bg-green-500 text-white';
+      document.getElementById('legend-meters').classList.remove('hidden');
+      showMeterLayer(numLat, numLng);
     }
 
     function clearSearch() {
