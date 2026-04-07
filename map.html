@@ -28,6 +28,12 @@
     .leaflet-popup-content { margin: 0; min-width: 190px; }
     .leaflet-popup-tip-container { margin-top: -1px; }
     .leaflet-control-attribution { font-size: 9px; }
+    /* Google Places autocomplete dropdown must sit above header */
+    .pac-container { z-index: 2100 !important; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 8px 24px rgba(0,0,0,0.12); margin-top: 4px; }
+    .pac-item { padding: 10px 14px; font-size: 13px; cursor: pointer; }
+    .pac-item:hover { background: #eff6ff; }
+    .pac-item-query { font-size: 13px; font-weight: 600; color: #111; }
+    .pac-icon { display: none; }
   </style>
 </head>
 <body class="bg-gray-50">
@@ -46,10 +52,6 @@
           class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-8 pr-8 py-2 text-sm outline-none focus:border-blue-300 focus:bg-white transition-colors">
         <button id="search-clear" onclick="clearSearch()"
           class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 text-xl leading-none">×</button>
-        <!-- Autocomplete dropdown -->
-        <div id="addr-dropdown"
-          class="hidden absolute left-0 right-0 top-full mt-1 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-[2000]">
-        </div>
       </div>
     </div>
     <!-- Region tabs + layer toggle -->
@@ -283,75 +285,47 @@
       });
     }
 
-    // ── Google Places autocomplete (via JS API, no CORS issue) ────────────
-    let autocompleteService = null;
+    // ── Google Places Autocomplete widget ─────────────────────────────────
     let geocoder = null;
-    let lastPredictions = [];
 
     function onGoogleReady() {
-      autocompleteService = new google.maps.places.AutocompleteService();
+      console.log('[map] Google Maps API ready');
+      const input = document.getElementById('addr-input');
       geocoder = new google.maps.Geocoder();
 
-      const input = document.getElementById('addr-input');
-      let debounce = null;
+      // Autocomplete widget — Google manages the dropdown UI entirely
+      const autocomplete = new google.maps.places.Autocomplete(input, {
+        componentRestrictions: { country: 'hk' },
+        fields: ['geometry', 'name', 'formatted_address'],
+      });
+
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        document.getElementById('search-clear').classList.remove('hidden');
+        if (!place.geometry?.location) {
+          // User pressed Enter without picking a suggestion — geocode the typed text
+          geocodeText(input.value.trim());
+          return;
+        }
+        flyToAndShowMeters(place.geometry.location.lat(), place.geometry.location.lng());
+      });
 
       input.addEventListener('input', () => {
-        const q = input.value.trim();
-        document.getElementById('search-clear').classList.toggle('hidden', !q);
-        clearTimeout(debounce);
-        if (q.length < 2) { hideDropdown(); return; }
-        debounce = setTimeout(() => {
-          autocompleteService.getPlacePredictions(
-            { input: q, componentRestrictions: { country: 'hk' }, language: getLang() === 'en' ? 'en' : 'zh-HK' },
-            (predictions, status) => {
-              if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions) { hideDropdown(); return; }
-              lastPredictions = predictions;
-              const dd = document.getElementById('addr-dropdown');
-              dd.innerHTML = predictions.map((p, i) => `
-                <div onclick="selectPrediction(${i})"
-                  style="padding:12px 16px;border-bottom:1px solid #f9fafb;cursor:pointer"
-                  ontouchstart="this.style.background='#eff6ff'" ontouchend="this.style.background=''">
-                  <p style="font-size:13px;font-weight:600;color:#111;margin:0 0 2px">${p.structured_formatting?.main_text || p.description}</p>
-                  <p style="font-size:11px;color:#9ca3af;margin:0">${p.structured_formatting?.secondary_text || ''}</p>
-                </div>`).join('');
-              dd.classList.remove('hidden');
-            }
-          );
-        }, 300);
+        document.getElementById('search-clear').classList.toggle('hidden', !input.value);
       });
 
       input.addEventListener('keydown', e => {
-        if (e.key === 'Enter') { hideDropdown(); geocodeText(input.value.trim()); }
-        if (e.key === 'Escape') hideDropdown();
-      });
-    }
-
-    document.addEventListener('click', e => {
-      if (!e.target.closest('#search-wrapper')) hideDropdown();
-    });
-
-    function hideDropdown() { document.getElementById('addr-dropdown').classList.add('hidden'); }
-
-    function selectPrediction(i) {
-      const p = lastPredictions[i];
-      if (!p) return;
-      document.getElementById('addr-input').value = p.structured_formatting?.main_text || p.description;
-      hideDropdown();
-      geocoder.geocode({ placeId: p.place_id }, (results, status) => {
-        if (status !== 'OK' || !results.length) { showToast(t('noAddressResult'), 3000); return; }
-        const { lat, lng } = results[0].geometry.location;
-        flyToAndShowMeters(lat(), lng());
+        if (e.key === 'Escape') input.blur();
       });
     }
 
     function geocodeText(query) {
-      if (!query) return;
-      if (!geocoder) { showToast(t('noAddressResult'), 3000); return; }
+      if (!query || !geocoder) return;
       showToast(t('searching'));
       geocoder.geocode({ address: query, componentRestrictions: { country: 'hk' } }, (results, status) => {
         if (status !== 'OK' || !results.length) { showToast(t('noAddressResult'), 3000); return; }
-        const { lat, lng } = results[0].geometry.location;
-        flyToAndShowMeters(lat(), lng());
+        const loc = results[0].geometry.location;
+        flyToAndShowMeters(loc.lat(), loc.lng());
       });
     }
 
