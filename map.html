@@ -12,8 +12,6 @@
   <script src="app.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- Google Maps JS API bootstrap (no callback — we use importLibrary) -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDnBWVIKVSJ-bgNV6IGfXn-gc43XOKN6V0&loading=async" async></script>
   <style id="shared-style"></style>
   <style>
     html, body { height: 100%; margin: 0; }
@@ -30,12 +28,6 @@
     .leaflet-popup-content { margin: 0; min-width: 190px; }
     .leaflet-popup-tip-container { margin-top: -1px; }
     .leaflet-control-attribution { font-size: 9px; }
-    /* Google Places autocomplete dropdown must sit above header */
-    .pac-container { z-index: 2100 !important; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 8px 24px rgba(0,0,0,0.12); margin-top: 4px; }
-    .pac-item { padding: 10px 14px; font-size: 13px; cursor: pointer; }
-    .pac-item:hover { background: #eff6ff; }
-    .pac-item-query { font-size: 13px; font-weight: 600; color: #111; }
-    .pac-icon { display: none; }
   </style>
 </head>
 <body class="bg-gray-50">
@@ -54,6 +46,9 @@
           class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-8 pr-8 py-2 text-sm outline-none focus:border-blue-300 focus:bg-white transition-colors">
         <button id="search-clear" onclick="clearSearch()"
           class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 text-xl leading-none">×</button>
+        <div id="addr-dropdown"
+          class="hidden absolute left-0 right-0 top-full mt-1 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-[2000]">
+        </div>
       </div>
     </div>
     <!-- Region tabs + layer toggle -->
@@ -287,49 +282,93 @@
       });
     }
 
-    // ── Google Places (loaded via importLibrary — no callback race condition) ─
-    let geocoder = null;
+    // ── Mapbox Geocoding (plain fetch, no SDK, no CORS issues) ────────────
+    const MAPBOX_TOKEN = 'pk.eyJ1Ijoic3RhY2V5Y2g5MSIsImEiOiJjbW5vbjA0djIyN3I2MnFxNnJlaXZzOGM2In0.BphcnKSeapOuGBO6ZKqHUg';
+    let lastFeatures = [];
+    let debounceTimer = null;
 
-    async function initGoogle() {
+    function initSearch() {
+      const input = document.getElementById('addr-input');
+      const dd    = document.getElementById('addr-dropdown');
+
+      input.addEventListener('input', () => {
+        const q = input.value.trim();
+        document.getElementById('search-clear').classList.toggle('hidden', !q);
+        clearTimeout(debounceTimer);
+        if (q.length < 2) { hideDropdown(); return; }
+        debounceTimer = setTimeout(() => fetchSuggestions(q), 300);
+      });
+
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          clearTimeout(debounceTimer);
+          hideDropdown();
+          if (lastFeatures.length) selectFeature(0);
+          else geocodeText(input.value.trim());
+        }
+        if (e.key === 'Escape') { hideDropdown(); input.blur(); }
+      });
+
+      document.addEventListener('click', e => {
+        if (!e.target.closest('#search-wrapper')) hideDropdown();
+      });
+    }
+
+    async function fetchSuggestions(query) {
       try {
-        const [placesLib, geocodingLib] = await Promise.all([
-          google.maps.importLibrary('places'),
-          google.maps.importLibrary('geocoding'),
-        ]);
-        geocoder = new geocodingLib.Geocoder();
-        const input = document.getElementById('addr-input');
-
-        const autocomplete = new placesLib.Autocomplete(input, {
-          componentRestrictions: { country: 'hk' },
-          fields: ['geometry', 'name', 'formatted_address'],
-        });
-
-        autocomplete.addListener('place_changed', () => {
-          const place = autocomplete.getPlace();
-          document.getElementById('search-clear').classList.remove('hidden');
-          if (!place.geometry?.location) {
-            geocodeText(input.value.trim()); return;
-          }
-          flyToAndShowMeters(place.geometry.location.lat(), place.geometry.location.lng());
-        });
-
-        input.addEventListener('input', () => {
-          document.getElementById('search-clear').classList.toggle('hidden', !input.value);
-        });
+        const lang = getLang() === 'en' ? 'en' : 'zh-Hant';
+        const url  = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
+          + `?access_token=${MAPBOX_TOKEN}&country=HK&limit=5&language=${lang}`;
+        const res  = await fetch(url);
+        const json = await res.json();
+        lastFeatures = json.features || [];
+        if (!lastFeatures.length) { hideDropdown(); return; }
+        const dd = document.getElementById('addr-dropdown');
+        dd.innerHTML = lastFeatures.map((f, i) => {
+          const main = f.text || f.place_name;
+          const sub  = f.place_name.replace(main + ', ', '');
+          return `<div onclick="selectFeature(${i})"
+            style="padding:11px 16px;border-bottom:1px solid #f9fafb;cursor:pointer;active:background:#eff6ff"
+            ontouchstart="this.style.background='#eff6ff'" ontouchend="this.style.background=''">
+            <p style="font-size:13px;font-weight:600;color:#111;margin:0 0 2px">${main}</p>
+            <p style="font-size:11px;color:#9ca3af;margin:0">${sub}</p>
+          </div>`;
+        }).join('');
+        dd.classList.remove('hidden');
       } catch (err) {
-        console.error('[map] Google init failed:', err);
+        console.error('[mapbox] suggest failed:', err);
       }
     }
 
-    function geocodeText(query) {
-      if (!query || !geocoder) return;
-      showToast(t('searching'));
-      geocoder.geocode({ address: query, componentRestrictions: { country: 'hk' } }, (results, status) => {
-        if (status !== 'OK' || !results.length) { showToast(t('noAddressResult'), 3000); return; }
-        const loc = results[0].geometry.location;
-        flyToAndShowMeters(loc.lat(), loc.lng());
-      });
+    function selectFeature(i) {
+      const f = lastFeatures[i];
+      if (!f) return;
+      document.getElementById('addr-input').value = f.text || f.place_name;
+      document.getElementById('search-clear').classList.remove('hidden');
+      hideDropdown();
+      const [lng, lat] = f.center;
+      flyToAndShowMeters(lat, lng);
     }
+
+    async function geocodeText(query) {
+      if (!query) return;
+      showToast(t('searching'));
+      try {
+        const lang = getLang() === 'en' ? 'en' : 'zh-Hant';
+        const url  = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
+          + `?access_token=${MAPBOX_TOKEN}&country=HK&limit=1&language=${lang}`;
+        const res  = await fetch(url);
+        const json = await res.json();
+        const f    = (json.features || [])[0];
+        if (!f) { showToast(t('noAddressResult'), 3000); return; }
+        const [lng, lat] = f.center;
+        flyToAndShowMeters(lat, lng);
+      } catch (err) {
+        showToast(t('noAddressResult'), 3000);
+      }
+    }
+
+    function hideDropdown() { document.getElementById('addr-dropdown').classList.add('hidden'); }
 
     async function flyToAndShowMeters(lat, lng) {
       if (searchPin) map.removeLayer(searchPin);
@@ -418,7 +457,7 @@
     }
 
     loadMapData();
-    initGoogle();
+    initSearch();
   </script>
 </body>
 </html>
