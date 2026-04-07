@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.svg">
   <title>香港停車場</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="app.js"></script>
@@ -181,6 +184,10 @@
 
     loadFavourites();
     loadSuggested();
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/hk-parking-vacancy/sw.js');
+    }
   </script>
 </body>
 </html>

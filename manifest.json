@@ -1,0 +1,18 @@
+{
+  "name": "香港停車場空位",
+  "short_name": "停車場",
+  "description": "香港實時停車場空位查詢",
+  "start_url": "/hk-parking-vacancy/",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#2563eb",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
