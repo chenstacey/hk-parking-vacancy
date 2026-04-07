@@ -282,9 +282,16 @@
       });
     }
 
-    // ── HK Government Address Lookup Service (ALS) ────────────────────────
-    // Free, no API key, supports Chinese/English building names + street addresses
-    let lastResults  = [];
+    // ── HK GeoData locationSearch (free, no key, building names + addresses) ─
+    // Returns HK1980 grid coords (EPSG:2326); convert to WGS84 with linear approx
+    // Accuracy ~50m — sufficient for locating nearby carparks/meters
+    function hk1980toWGS84(x, y) {
+      const lat = (y - 819069.8) / 111300  + 22.31213;
+      const lng = (x - 836694.05) / 103014 + 114.17856;
+      return { lat, lng };
+    }
+
+    let lastResults   = [];
     let debounceTimer = null;
 
     function initSearch() {
@@ -315,49 +322,35 @@
 
     async function fetchSuggestions(query, autoSelect = false) {
       try {
-        const lang = getLang() === 'en' ? 'en' : 'zh-Hant';
-        const url  = `https://www.als.ogcio.gov.hk/lookup?q=${encodeURIComponent(query)}&n=7&lang=${lang}`;
-        const res  = await fetch(url, { headers: { Accept: 'application/json' } });
-        const json = await res.json();
-        lastResults = (json.SuggestedAddress || []).filter(a => {
-          const geo = a.Address?.PremisesAddress?.GeospatialInformation;
-          return geo?.Latitude && geo?.Longitude;
-        });
-        if (!lastResults.length) { hideDropdown(); return; }
+        const url = `https://geodata.gov.hk/gs/api/v1.0.0/locationSearch?q=${encodeURIComponent(query)}`;
+        const res = await fetch(url);
+        const arr = await res.json();
+        lastResults = (arr || []).filter(r => r.x && r.y).slice(0, 7);
+        if (!lastResults.length) { hideDropdown(); if (autoSelect) showToast(t('noAddressResult'), 3000); return; }
         if (autoSelect) { selectResult(0); return; }
 
         const dd = document.getElementById('addr-dropdown');
-        dd.innerHTML = lastResults.map((a, i) => {
-          const pa   = a.Address?.PremisesAddress;
-          const main = getLang() === 'en'
-            ? (pa?.EngPremisesAddress?.BuildingName || pa?.EngPremisesAddress?.EngStreet?.StreetName || query)
-            : (pa?.ChiPremisesAddress?.BuildingName || pa?.ChiPremisesAddress?.ChiStreet?.StreetName || query);
-          const sub  = getLang() === 'en'
-            ? (pa?.EngPremisesAddress?.EngDistrict?.DcDistrict || '')
-            : (pa?.ChiPremisesAddress?.ChiDistrict?.DcDistrict || '');
+        dd.innerHTML = lastResults.map((r, i) => {
+          const main = getLang() === 'en' ? (r.nameEN || r.addressEN) : (r.nameZH || r.addressZH);
+          const sub  = getLang() === 'en' ? (r.addressEN || '') : (r.addressZH || '');
           return `<div onclick="selectResult(${i})"
             style="padding:11px 16px;border-bottom:1px solid #f9fafb;cursor:pointer"
             ontouchstart="this.style.background='#eff6ff'" ontouchend="this.style.background=''">
-            <p style="font-size:13px;font-weight:600;color:#111;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${main}</p>
-            <p style="font-size:11px;color:#9ca3af;margin:0">${sub}</p>
+            <p style="font-size:13px;font-weight:600;color:#111;margin:0 0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${main}</p>
+            <p style="font-size:11px;color:#9ca3af;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sub}</p>
           </div>`;
         }).join('');
         dd.classList.remove('hidden');
       } catch (err) {
-        console.error('[als] suggest failed:', err);
+        console.error('[geodata] suggest failed:', err);
       }
     }
 
     function selectResult(i) {
-      const a = lastResults[i];
-      if (!a) return;
-      const geo  = a.Address?.PremisesAddress?.GeospatialInformation;
-      const lat  = parseFloat(geo.Latitude);
-      const lng  = parseFloat(geo.Longitude);
-      const pa   = a.Address?.PremisesAddress;
-      const name = getLang() === 'en'
-        ? (pa?.EngPremisesAddress?.BuildingName || pa?.EngPremisesAddress?.EngStreet?.StreetName || '')
-        : (pa?.ChiPremisesAddress?.BuildingName || pa?.ChiPremisesAddress?.ChiStreet?.StreetName || '');
+      const r = lastResults[i];
+      if (!r) return;
+      const { lat, lng } = hk1980toWGS84(r.x, r.y);
+      const name = getLang() === 'en' ? (r.nameEN || r.addressEN) : (r.nameZH || r.addressZH);
       document.getElementById('addr-input').value = name;
       document.getElementById('search-clear').classList.remove('hidden');
       hideDropdown();
