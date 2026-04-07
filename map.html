@@ -9,9 +9,8 @@
   <script src="app.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- Google Maps JS API (Places library for autocomplete + Geocoder) -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDnBWVIKVSJ-bgNV6IGfXn-gc43XOKN6V0&libraries=places&callback=onGoogleReady"
-    async defer></script>
+  <!-- Google Maps JS API bootstrap (no callback — we use importLibrary) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDnBWVIKVSJ-bgNV6IGfXn-gc43XOKN6V0&loading=async" async></script>
   <style id="shared-style"></style>
   <style>
     html, body { height: 100%; margin: 0; }
@@ -285,38 +284,38 @@
       });
     }
 
-    // ── Google Places Autocomplete widget ─────────────────────────────────
+    // ── Google Places (loaded via importLibrary — no callback race condition) ─
     let geocoder = null;
 
-    function onGoogleReady() {
-      console.log('[map] Google Maps API ready');
-      const input = document.getElementById('addr-input');
-      geocoder = new google.maps.Geocoder();
+    async function initGoogle() {
+      try {
+        const [placesLib, geocodingLib] = await Promise.all([
+          google.maps.importLibrary('places'),
+          google.maps.importLibrary('geocoding'),
+        ]);
+        geocoder = new geocodingLib.Geocoder();
+        const input = document.getElementById('addr-input');
 
-      // Autocomplete widget — Google manages the dropdown UI entirely
-      const autocomplete = new google.maps.places.Autocomplete(input, {
-        componentRestrictions: { country: 'hk' },
-        fields: ['geometry', 'name', 'formatted_address'],
-      });
+        const autocomplete = new placesLib.Autocomplete(input, {
+          componentRestrictions: { country: 'hk' },
+          fields: ['geometry', 'name', 'formatted_address'],
+        });
 
-      autocomplete.addListener('place_changed', () => {
-        const place = autocomplete.getPlace();
-        document.getElementById('search-clear').classList.remove('hidden');
-        if (!place.geometry?.location) {
-          // User pressed Enter without picking a suggestion — geocode the typed text
-          geocodeText(input.value.trim());
-          return;
-        }
-        flyToAndShowMeters(place.geometry.location.lat(), place.geometry.location.lng());
-      });
+        autocomplete.addListener('place_changed', () => {
+          const place = autocomplete.getPlace();
+          document.getElementById('search-clear').classList.remove('hidden');
+          if (!place.geometry?.location) {
+            geocodeText(input.value.trim()); return;
+          }
+          flyToAndShowMeters(place.geometry.location.lat(), place.geometry.location.lng());
+        });
 
-      input.addEventListener('input', () => {
-        document.getElementById('search-clear').classList.toggle('hidden', !input.value);
-      });
-
-      input.addEventListener('keydown', e => {
-        if (e.key === 'Escape') input.blur();
-      });
+        input.addEventListener('input', () => {
+          document.getElementById('search-clear').classList.toggle('hidden', !input.value);
+        });
+      } catch (err) {
+        console.error('[map] Google init failed:', err);
+      }
     }
 
     function geocodeText(query) {
@@ -416,6 +415,7 @@
     }
 
     loadMapData();
+    initGoogle();
   </script>
 </body>
 </html>
