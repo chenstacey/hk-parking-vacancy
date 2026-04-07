@@ -282,14 +282,13 @@
       });
     }
 
-    // ── Mapbox Geocoding (plain fetch, no SDK, no CORS issues) ────────────
-    const MAPBOX_TOKEN = 'pk.eyJ1Ijoic3RhY2V5Y2g5MSIsImEiOiJjbW5vbjA0djIyN3I2MnFxNnJlaXZzOGM2In0.BphcnKSeapOuGBO6ZKqHUg';
-    let lastFeatures = [];
+    // ── HK Government Address Lookup Service (ALS) ────────────────────────
+    // Free, no API key, supports Chinese/English building names + street addresses
+    let lastResults  = [];
     let debounceTimer = null;
 
     function initSearch() {
       const input = document.getElementById('addr-input');
-      const dd    = document.getElementById('addr-dropdown');
 
       input.addEventListener('input', () => {
         const q = input.value.trim();
@@ -303,8 +302,8 @@
         if (e.key === 'Enter') {
           clearTimeout(debounceTimer);
           hideDropdown();
-          if (lastFeatures.length) selectFeature(0);
-          else geocodeText(input.value.trim());
+          if (lastResults.length) selectResult(0);
+          else fetchSuggestions(input.value.trim(), true);
         }
         if (e.key === 'Escape') { hideDropdown(); input.blur(); }
       });
@@ -314,58 +313,55 @@
       });
     }
 
-    async function fetchSuggestions(query) {
+    async function fetchSuggestions(query, autoSelect = false) {
       try {
         const lang = getLang() === 'en' ? 'en' : 'zh-Hant';
-        const url  = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
-          + `?access_token=${MAPBOX_TOKEN}&country=HK&limit=5&language=${lang}`;
-        const res  = await fetch(url);
+        const url  = `https://www.als.ogcio.gov.hk/lookup?q=${encodeURIComponent(query)}&n=7&lang=${lang}`;
+        const res  = await fetch(url, { headers: { Accept: 'application/json' } });
         const json = await res.json();
-        lastFeatures = json.features || [];
-        if (!lastFeatures.length) { hideDropdown(); return; }
+        lastResults = (json.SuggestedAddress || []).filter(a => {
+          const geo = a.Address?.PremisesAddress?.GeospatialInformation;
+          return geo?.Latitude && geo?.Longitude;
+        });
+        if (!lastResults.length) { hideDropdown(); return; }
+        if (autoSelect) { selectResult(0); return; }
+
         const dd = document.getElementById('addr-dropdown');
-        dd.innerHTML = lastFeatures.map((f, i) => {
-          const main = f.text || f.place_name;
-          const sub  = f.place_name.replace(main + ', ', '');
-          return `<div onclick="selectFeature(${i})"
-            style="padding:11px 16px;border-bottom:1px solid #f9fafb;cursor:pointer;active:background:#eff6ff"
+        dd.innerHTML = lastResults.map((a, i) => {
+          const pa   = a.Address?.PremisesAddress;
+          const main = getLang() === 'en'
+            ? (pa?.EngPremisesAddress?.BuildingName || pa?.EngPremisesAddress?.EngStreet?.StreetName || query)
+            : (pa?.ChiPremisesAddress?.BuildingName || pa?.ChiPremisesAddress?.ChiStreet?.StreetName || query);
+          const sub  = getLang() === 'en'
+            ? (pa?.EngPremisesAddress?.EngDistrict?.DcDistrict || '')
+            : (pa?.ChiPremisesAddress?.ChiDistrict?.DcDistrict || '');
+          return `<div onclick="selectResult(${i})"
+            style="padding:11px 16px;border-bottom:1px solid #f9fafb;cursor:pointer"
             ontouchstart="this.style.background='#eff6ff'" ontouchend="this.style.background=''">
-            <p style="font-size:13px;font-weight:600;color:#111;margin:0 0 2px">${main}</p>
+            <p style="font-size:13px;font-weight:600;color:#111;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${main}</p>
             <p style="font-size:11px;color:#9ca3af;margin:0">${sub}</p>
           </div>`;
         }).join('');
         dd.classList.remove('hidden');
       } catch (err) {
-        console.error('[mapbox] suggest failed:', err);
+        console.error('[als] suggest failed:', err);
       }
     }
 
-    function selectFeature(i) {
-      const f = lastFeatures[i];
-      if (!f) return;
-      document.getElementById('addr-input').value = f.text || f.place_name;
+    function selectResult(i) {
+      const a = lastResults[i];
+      if (!a) return;
+      const geo  = a.Address?.PremisesAddress?.GeospatialInformation;
+      const lat  = parseFloat(geo.Latitude);
+      const lng  = parseFloat(geo.Longitude);
+      const pa   = a.Address?.PremisesAddress;
+      const name = getLang() === 'en'
+        ? (pa?.EngPremisesAddress?.BuildingName || pa?.EngPremisesAddress?.EngStreet?.StreetName || '')
+        : (pa?.ChiPremisesAddress?.BuildingName || pa?.ChiPremisesAddress?.ChiStreet?.StreetName || '');
+      document.getElementById('addr-input').value = name;
       document.getElementById('search-clear').classList.remove('hidden');
       hideDropdown();
-      const [lng, lat] = f.center;
       flyToAndShowMeters(lat, lng);
-    }
-
-    async function geocodeText(query) {
-      if (!query) return;
-      showToast(t('searching'));
-      try {
-        const lang = getLang() === 'en' ? 'en' : 'zh-Hant';
-        const url  = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`
-          + `?access_token=${MAPBOX_TOKEN}&country=HK&limit=1&language=${lang}`;
-        const res  = await fetch(url);
-        const json = await res.json();
-        const f    = (json.features || [])[0];
-        if (!f) { showToast(t('noAddressResult'), 3000); return; }
-        const [lng, lat] = f.center;
-        flyToAndShowMeters(lat, lng);
-      } catch (err) {
-        showToast(t('noAddressResult'), 3000);
-      }
     }
 
     function hideDropdown() { document.getElementById('addr-dropdown').classList.add('hidden'); }
