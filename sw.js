@@ -2,13 +2,13 @@
 // No aggressive caching since app relies on real-time data
 const CACHE = 'hk-parking-v1';
 const SHELL = [
-  '/hk-parking-vacancy/',
-  '/hk-parking-vacancy/index.html',
-  '/hk-parking-vacancy/list.html',
-  '/hk-parking-vacancy/detail.html',
-  '/hk-parking-vacancy/map.html',
-  '/hk-parking-vacancy/app.js',
-  '/hk-parking-vacancy/icon.svg',
+  '/',
+  '/index.html',
+  '/list.html',
+  '/detail.html',
+  '/map.html',
+  '/app.js',
+  '/icon.svg',
 ];
 
 self.addEventListener('install', e => {
