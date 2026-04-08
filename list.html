@@ -83,6 +83,16 @@
     document.getElementById('txt-no-results').textContent    = t('noResults');
     document.getElementById('result-count').textContent      = t('loading');
 
+    // ── State ─────────────────────────────────────────────────────────────
+    let allInfo        = [];
+    let allVacancy     = null;
+    const _initQ       = new URLSearchParams(location.search).get('q') || '';
+    let selectedRegion = _initQ ? '' : 'hki';
+    let selectedDist   = null;
+    let searchQuery    = _initQ;
+    let vacancyTimer   = null;
+    if (_initQ) document.getElementById('search-input').value = _initQ;
+
     // Build region tabs
     const regionTabsEl = document.getElementById('region-tabs');
     REGIONS.forEach((r, i) => {
@@ -101,19 +111,6 @@
     allBtn.className = `region-tab flex-1 text-xs font-semibold py-2 border-b-2 ${_initQ ? 'border-blue-500 text-blue-500' : 'border-transparent text-gray-400'}`;
     allBtn.textContent = t('all');
     regionTabsEl.appendChild(allBtn);
-
-    // ── State ─────────────────────────────────────────────────────────────
-    let allInfo        = [];
-    let allVacancy     = null;
-    let selectedRegion = 'hki';
-    let selectedDist   = null;
-    const _initQ       = new URLSearchParams(location.search).get('q') || '';
-    let searchQuery    = _initQ;
-    let vacancyTimer   = null;
-    if (_initQ) {
-      document.getElementById('search-input').value = _initQ;
-      selectedRegion = ''; // show all regions when arriving with a search query
-    }
 
     async function loadData() {
       document.getElementById('error').classList.add('hidden');
