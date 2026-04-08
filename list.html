@@ -120,15 +120,21 @@
       document.getElementById('loading').classList.remove('hidden');
       document.getElementById('carpark-list').classList.add('hidden');
       try {
-        const [infoJson, vacJson] = await Promise.all([fetchAllInfo(), fetchAllVacancy()]);
-        allInfo    = infoJson.car_park || [];
-        allVacancy = vacJson;
+        // Show list as soon as info loads — don't wait for vacancy
+        const infoJson = await fetchAllInfo();
+        allInfo = infoJson.car_park || [];
         buildDistrictChips();
         renderList();
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('carpark-list').classList.remove('hidden');
-        clearInterval(vacancyTimer);
-        vacancyTimer = setInterval(refreshVacancy, REFRESH_MS);
+
+        // Load vacancy in background, then update numbers
+        fetchAllVacancy().then(vacJson => {
+          allVacancy = vacJson;
+          renderList();
+          clearInterval(vacancyTimer);
+          vacancyTimer = setInterval(refreshVacancy, REFRESH_MS);
+        }).catch(() => {});
       } catch (err) {
         console.error(err);
         document.getElementById('loading').classList.add('hidden');

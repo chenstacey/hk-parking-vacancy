@@ -294,7 +294,7 @@ function distanceKm(lat1, lng1, lat2, lng2) {
 
 // ── Fetch helpers ─────────────────────────────────────────────────────────
 async function fetchAllInfo() {
-  const res = await fetch(INFO_URL, { cache: 'no-store' });
+  const res = await fetch(INFO_URL, { cache: 'force-cache' });
   if (!res.ok) throw new Error(`INFO ${res.status}`);
   return res.json();
 }
