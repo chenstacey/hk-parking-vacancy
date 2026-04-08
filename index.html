@@ -27,14 +27,15 @@
 
   <main class="max-w-md mx-auto px-4 py-4 space-y-5">
 
-    <div class="relative">
+    <div class="relative" id="search-wrapper">
       <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-sm pointer-events-none">🔍</span>
-      <input id="home-search" type="search"
-        class="w-full bg-white rounded-2xl px-4 pl-9 py-3 shadow-sm text-sm outline-none focus:ring-2 focus:ring-blue-200 transition-shadow"
-        oninput="this.nextElementSibling.classList.toggle('hidden', !this.value)"
-        onkeydown="if(event.key==='Enter' && this.value.trim()) location.href='list.html?q='+encodeURIComponent(this.value.trim())">
-      <button class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 text-xl leading-none"
-        onclick="document.getElementById('home-search').value='';this.classList.add('hidden')">×</button>
+      <input id="home-search" type="search" autocomplete="off"
+        class="w-full bg-white rounded-2xl px-4 pl-9 pr-8 py-3 shadow-sm text-sm outline-none focus:ring-2 focus:ring-blue-200 transition-shadow">
+      <button id="search-clear-btn" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 text-xl leading-none"
+        onclick="clearHomeSearch()">×</button>
+      <div id="search-dropdown"
+        class="hidden absolute left-0 right-0 top-full mt-1 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 max-h-72 overflow-y-auto">
+      </div>
     </div>
 
     <div class="grid grid-cols-2 gap-3">
@@ -86,7 +87,6 @@
     // Apply i18n strings
     document.getElementById('txt-region').textContent           = t('hk');
     document.getElementById('txt-title').textContent            = t('appTitle');
-    document.getElementById('home-search').placeholder = t('searchPlaceholder');
     document.getElementById('txt-all-carparks').textContent     = t('allCarparks');
     document.getElementById('txt-search-filter').textContent    = t('searchFilter');
     document.getElementById('txt-map-view').textContent         = t('mapView');
@@ -185,6 +185,61 @@
         favLoadEl.classList.add('hidden');
         favEmptyEl.classList.remove('hidden');
       }
+    }
+
+    // ── Home search with dropdown ─────────────────────────────────────────
+    let allParksCache = null;
+
+    async function getParks() {
+      if (!allParksCache) {
+        const json = await fetchAllInfo();
+        allParksCache = json.car_park || [];
+      }
+      return allParksCache;
+    }
+
+    const homeInput = document.getElementById('home-search');
+    homeInput.placeholder = t('searchPlaceholder');
+
+    homeInput.addEventListener('input', async () => {
+      const q = homeInput.value.trim();
+      document.getElementById('search-clear-btn').classList.toggle('hidden', !q);
+      if (q.length < 1) { hideHomeDropdown(); return; }
+      const parks  = await getParks();
+      const q_low  = q.toLowerCase();
+      const matches = parks.filter(p =>
+        (p.name_tc || '').includes(q) ||
+        (p.name_en || '').toLowerCase().includes(q_low)
+      ).slice(0, 8);
+      if (!matches.length) { hideHomeDropdown(); return; }
+      const dd = document.getElementById('search-dropdown');
+      dd.innerHTML = matches.map(p => `
+        <a href="detail.html?id=${p.park_id}"
+          class="flex items-center px-4 py-3 border-b border-gray-50 active:bg-blue-50 last:border-0">
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-gray-900 truncate">${parkName(p)}</p>
+            <p class="text-xs text-gray-400 truncate mt-0.5">${parkAddress(p)}</p>
+          </div>
+        </a>`).join('');
+      dd.classList.remove('hidden');
+    });
+
+    homeInput.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { hideHomeDropdown(); homeInput.blur(); }
+    });
+
+    document.addEventListener('click', e => {
+      if (!e.target.closest('#search-wrapper')) hideHomeDropdown();
+    });
+
+    function hideHomeDropdown() {
+      document.getElementById('search-dropdown').classList.add('hidden');
+    }
+
+    function clearHomeSearch() {
+      homeInput.value = '';
+      document.getElementById('search-clear-btn').classList.add('hidden');
+      hideHomeDropdown();
     }
 
     loadFavourites();
