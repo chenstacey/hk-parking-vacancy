@@ -27,10 +27,15 @@
 
   <main class="max-w-md mx-auto px-4 py-4 space-y-5">
 
-    <a href="list.html" class="flex items-center gap-3 bg-white rounded-2xl px-4 py-3 shadow-sm active:bg-gray-50 transition-colors">
-      <span class="text-gray-300">🔍</span>
-      <span id="txt-search-placeholder" class="text-sm text-gray-400"></span>
-    </a>
+    <div class="relative">
+      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-sm pointer-events-none">🔍</span>
+      <input id="home-search" type="search"
+        class="w-full bg-white rounded-2xl px-4 pl-9 py-3 shadow-sm text-sm outline-none focus:ring-2 focus:ring-blue-200 transition-shadow"
+        oninput="this.nextElementSibling.classList.toggle('hidden', !this.value)"
+        onkeydown="if(event.key==='Enter' && this.value.trim()) location.href='list.html?q='+encodeURIComponent(this.value.trim())">
+      <button class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 text-xl leading-none"
+        onclick="document.getElementById('home-search').value='';this.classList.add('hidden')">×</button>
+    </div>
 
     <div class="grid grid-cols-2 gap-3">
       <a href="list.html" class="bg-blue-500 rounded-2xl p-4 text-white active:bg-blue-600 transition-colors">
@@ -81,7 +86,7 @@
     // Apply i18n strings
     document.getElementById('txt-region').textContent           = t('hk');
     document.getElementById('txt-title').textContent            = t('appTitle');
-    document.getElementById('txt-search-placeholder').textContent = t('searchPlaceholder');
+    document.getElementById('home-search').placeholder = t('searchPlaceholder');
     document.getElementById('txt-all-carparks').textContent     = t('allCarparks');
     document.getElementById('txt-search-filter').textContent    = t('searchFilter');
     document.getElementById('txt-map-view').textContent         = t('mapView');
