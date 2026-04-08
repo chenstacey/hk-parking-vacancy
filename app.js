@@ -268,10 +268,14 @@ const METER_INFO_URL     = 'https://resource.data.one.gov.hk/td/psiparkingspaces
 const METER_VACANCY_URL  = 'https://resource.data.one.gov.hk/td/psiparkingspaces/occupancystatus/occupancystatus.csv';
 
 // ── CSV parser ────────────────────────────────────────────────────────────
+// Skips leading non-header lines (e.g. date row + blank row in meter CSVs)
 function parseCSV(text) {
   const lines = text.replace(/\r/g, '').trim().split('\n');
-  const headers = lines[0].split(',').map(h => h.trim());
-  return lines.slice(1).map(line => {
+  // Find the first line that looks like a real header (contains multiple commas and no spaces-only content)
+  const headerIdx = lines.findIndex(l => l.split(',').length > 3 && l.trim() && !l.match(/^,+$/));
+  if (headerIdx < 0) return [];
+  const headers = lines[headerIdx].split(',').map(h => h.trim().replace(/^\uFEFF/, ''));
+  return lines.slice(headerIdx + 1).filter(l => l.trim()).map(line => {
     const vals = line.split(',');
     const obj  = {};
     headers.forEach((h, i) => { obj[h] = (vals[i] || '').trim(); });
