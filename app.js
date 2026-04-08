@@ -50,7 +50,7 @@ const STRINGS = {
     home: '首頁', list: '列表', map: '地圖',
     // Index
     hk: '香港', appTitle: '停車場空位',
-    searchPlaceholder: '搜索停車場名稱或地址…',
+    searchPlaceholder: '輸入停車場名稱…',
     allCarparks: '全部列表', searchFilter: '搜索 · 篩選地區',
     mapView: '地圖視圖', comingSoon: '即將推出',
     favourites: '⭐ 收藏夾', browseAll: '瀏覽全部',
@@ -101,7 +101,7 @@ const STRINGS = {
     home: 'Home', list: 'List', map: 'Map',
     // Index
     hk: 'Hong Kong', appTitle: 'Parking Vacancy',
-    searchPlaceholder: 'Search carpark name or address…',
+    searchPlaceholder: 'Search carpark name…',
     allCarparks: 'All Carparks', searchFilter: 'Search · Filter by district',
     mapView: 'Map View', comingSoon: 'Coming Soon',
     favourites: '⭐ Favourites', browseAll: 'Browse All',
