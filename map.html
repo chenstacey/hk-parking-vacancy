@@ -217,7 +217,7 @@
     }
 
     // ── Carpark popup ─────────────────────────────────────────────────────
-    function carparkPopupHtml(park, v) {
+    function carparkPopupHtml(park, v, lat, lng) {
       const isClosed   = !v || v.vacancy_type === 'C' || v.vacancy < 0;
       const style      = v ? vacancyStyle(v.vacancy, v.vacancy_type) : null;
       const badgeClass = style ? style.badge : 'bg-gray-100 text-gray-400';
@@ -251,12 +251,12 @@
         const v = getParkVacancy(park.park_id, allVacancy), color = dotColor(v);
         if (markerMap[park.park_id]) {
           markerMap[park.park_id].marker.setStyle({ fillColor: color, color });
-          markerMap[park.park_id].marker.setPopupContent(carparkPopupHtml(park, v));
+          markerMap[park.park_id].marker.setPopupContent(carparkPopupHtml(park, v, lat, lng));
         } else {
           const marker = L.circleMarker([lat, lng], {
             radius: 9, fillColor: color, color, weight: 0, fillOpacity: 1,
           }).addTo(map);
-          marker.bindPopup(carparkPopupHtml(park, v), { maxWidth: 240, minWidth: 190, closeButton: false, offset: [0, -6] });
+          marker.bindPopup(carparkPopupHtml(park, v, lat, lng), { maxWidth: 240, minWidth: 190, closeButton: false, offset: [0, -6] });
           markerMap[park.park_id] = { marker, park };
         }
       });
@@ -433,8 +433,9 @@
             const vac = await fetchAllVacancy();
             Object.values(markerMap).forEach(({ marker, park }) => {
               const v = getParkVacancy(park.park_id, vac), color = dotColor(v);
+              const ll = marker.getLatLng();
               marker.setStyle({ fillColor: color, color });
-              marker.setPopupContent(carparkPopupHtml(park, v));
+              marker.setPopupContent(carparkPopupHtml(park, v, ll.lat, ll.lng));
             });
           } catch (_) {}
         }, REFRESH_MS);
