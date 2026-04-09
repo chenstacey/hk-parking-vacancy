@@ -28,6 +28,7 @@
     .leaflet-popup-content { margin: 0; min-width: 190px; }
     .leaflet-popup-tip-container { margin-top: -1px; }
     .leaflet-control-attribution { font-size: 9px; }
+    #map { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   </style>
 </head>
 <body class="bg-gray-50">
@@ -142,16 +143,11 @@
     let showCarparks = true;
     let showMeters   = false;
 
-    // ── Long-press to drop a custom pin ───────────────────────────────────
-    let longPressTimer = null;
-    map.on('mousedown touchstart', e => {
-      longPressTimer = setTimeout(() => {
-        const latlng = e.latlng || (e.touches && map.mouseEventToLatLng(e.touches[0]));
-        if (!latlng) return;
-        dropCustomPin(latlng.lat, latlng.lng);
-      }, 600);
+    // ── Long-press to drop a custom pin (contextmenu = long-press on iOS) ──
+    map.on('contextmenu', e => {
+      L.DomEvent.preventDefault(e.originalEvent);
+      dropCustomPin(e.latlng.lat, e.latlng.lng);
     });
-    map.on('mouseup mousemove touchend touchmove', () => clearTimeout(longPressTimer));
 
     function dropCustomPin(lat, lng) {
       if (customPin) map.removeLayer(customPin);
