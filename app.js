@@ -331,6 +331,44 @@ async function fetchMeters() {
   }).filter(r => r.lat && r.lng);
 }
 
+// ── Navigation links ─────────────────────────────────────────────────────
+function renderNavButton(lat, lng, name) {
+  const enc = encodeURIComponent(name || '');
+  const apple  = `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`;
+  const google = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+  const waze   = `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
+  return `
+    <div class="relative inline-block nav-btn-wrap">
+      <button onclick="toggleNavMenu(this)"
+        class="flex items-center gap-1.5 bg-blue-500 text-white text-xs font-semibold px-3 py-1.5 rounded-full active:bg-blue-600 transition-colors">
+        <span>◎</span><span>${getLang() === 'en' ? 'Navigate' : '導航'}</span>
+      </button>
+      <div class="nav-menu hidden absolute right-0 mt-1 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 w-40">
+        <a href="${apple}" target="_blank" class="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 border-b border-gray-50 active:bg-gray-50">
+          <span>🗺️</span> Apple Maps
+        </a>
+        <a href="${google}" target="_blank" class="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 border-b border-gray-50 active:bg-gray-50">
+          <span>🌐</span> Google Maps
+        </a>
+        <a href="${waze}" target="_blank" class="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 active:bg-gray-50">
+          <span>🚗</span> Waze
+        </a>
+      </div>
+    </div>`;
+}
+
+function toggleNavMenu(btn) {
+  const menu = btn.nextElementSibling;
+  menu.classList.toggle('hidden');
+  // Close when clicking outside
+  setTimeout(() => {
+    document.addEventListener('click', function close(e) {
+      if (!e.target.closest('.nav-btn-wrap')) { menu.classList.add('hidden'); }
+      document.removeEventListener('click', close);
+    });
+  }, 0);
+}
+
 // ── Tab bar HTML (injected into each page) ────────────────────────────────
 function renderTabBar(active) {
   const tabs = [

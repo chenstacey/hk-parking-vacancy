@@ -85,9 +85,12 @@
     <!-- Mini map -->
     <div id="mini-map-card" class="hidden bg-white rounded-2xl shadow-sm overflow-hidden">
       <div id="mini-map"></div>
-      <a id="mini-map-link" href="map.html" class="flex items-center justify-center gap-1.5 py-2.5 text-xs text-blue-500 font-medium active:bg-gray-50">
-        <span>◎</span><span id="txt-open-map"></span>
-      </a>
+      <div class="flex items-center justify-between px-4 py-2.5">
+        <a id="mini-map-link" href="map.html" class="flex items-center gap-1.5 text-xs text-blue-500 font-medium active:opacity-70">
+          <span>◎</span><span id="txt-open-map"></span>
+        </a>
+        <div id="nav-btn"></div>
+      </div>
     </div>
 
     <p id="txt-footer" class="text-center text-xs text-gray-300 pb-6"></p>
@@ -174,6 +177,7 @@
         card.classList.remove('hidden');
         // Link to full map page centred on this park
         document.getElementById('mini-map-link').href = `map.html?lat=${lat}&lng=${lng}`;
+        document.getElementById('nav-btn').innerHTML = renderNavButton(lat, lng, parkName(park));
         // Init Leaflet (only once)
         if (!window._miniMapInit) {
           window._miniMapInit = true;

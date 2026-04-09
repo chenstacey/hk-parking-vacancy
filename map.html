@@ -236,8 +236,9 @@
             </div>
             <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px" class="${badgeClass}">${label}</span>
           </div>
-          <div style="padding:0 14px 12px">
-            <a href="detail.html?id=${park.park_id}" style="display:block;text-align:center;background:#3b82f6;color:white;border-radius:10px;padding:7px;font-size:12px;font-weight:600;text-decoration:none">${t('viewDetails')}</a>
+          <div style="padding:0 14px 12px;display:flex;gap:8px">
+            <a href="detail.html?id=${park.park_id}" style="flex:1;text-align:center;background:#3b82f6;color:white;border-radius:10px;padding:7px;font-size:12px;font-weight:600;text-decoration:none">${t('viewDetails')}</a>
+            <a href="${/android/i.test(navigator.userAgent) ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}` : `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`}" target="_blank" style="flex:1;text-align:center;background:#f3f4f6;color:#374151;border-radius:10px;padding:7px;font-size:12px;font-weight:600;text-decoration:none">${getLang() === 'en' ? 'Navigate' : '導航'}</a>
           </div>
         </div>`;
     }
