@@ -51,6 +51,7 @@
         </div>
       </div>
     </div>
+    <p id="map-hint" class="text-center text-xs text-gray-300 pb-1"></p>
     <!-- Region tabs + layer toggle -->
     <div class="max-w-2xl mx-auto flex items-stretch">
       <div id="region-tabs" class="flex flex-1"></div>
@@ -112,6 +113,7 @@
     document.getElementById('txt-map-error').textContent   = t('mapError');
     document.getElementById('txt-retry').textContent       = t('retry');
     document.getElementById('addr-input').placeholder      = t('searchAddressPlaceholder');
+    document.getElementById('map-hint').textContent        = getLang() === 'en' ? 'Long-press map to drop a pin' : '長按地圖可放置定位點';
 
     function applyHeaderHeight() {
       const h = document.getElementById('header').offsetHeight;
@@ -135,9 +137,44 @@
     const markerMap  = {};
     let vacancyTimer = null;
     let searchPin    = null;
+    let customPin    = null;
     let allMeters    = null;
     let showCarparks = true;
     let showMeters   = false;
+
+    // ── Long-press to drop a custom pin ───────────────────────────────────
+    let longPressTimer = null;
+    map.on('mousedown touchstart', e => {
+      longPressTimer = setTimeout(() => {
+        const latlng = e.latlng || (e.touches && map.mouseEventToLatLng(e.touches[0]));
+        if (!latlng) return;
+        dropCustomPin(latlng.lat, latlng.lng);
+      }, 600);
+    });
+    map.on('mouseup mousemove touchend touchmove', () => clearTimeout(longPressTimer));
+
+    function dropCustomPin(lat, lng) {
+      if (customPin) map.removeLayer(customPin);
+      customPin = L.marker([lat, lng], {
+        icon: L.divIcon({
+          html: `<div style="width:16px;height:16px;background:#ef4444;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div>`,
+          className: '', iconSize: [16, 16], iconAnchor: [8, 16],
+        }), zIndexOffset: 999,
+      }).addTo(map);
+
+      const label = getLang() === 'en' ? 'Custom Pin' : '自訂位置';
+      const removeLabel = getLang() === 'en' ? 'Remove' : '移除';
+      customPin.bindPopup(`
+        <div style="font-family:-apple-system,sans-serif;min-width:170px">
+          <p style="font-size:13px;font-weight:700;color:#111;margin:0 0 4px;padding:12px 14px 0">${label}</p>
+          <p style="font-size:11px;color:#9ca3af;margin:0 0 10px;padding:0 14px">${lat.toFixed(5)}, ${lng.toFixed(5)}</p>
+          <div style="padding:0 14px 12px;display:flex;gap:8px">
+            <button onclick="showNavPicker(${lat},${lng})" style="flex:1;background:#3b82f6;color:white;border:none;border-radius:10px;padding:7px;font-size:12px;font-weight:600;cursor:pointer">${getLang()==='en'?'Navigate':'導航'}</button>
+            <button onclick="if(customPin){map.removeLayer(customPin);customPin=null;}" style="flex:1;background:#f3f4f6;color:#6b7280;border:none;border-radius:10px;padding:7px;font-size:12px;font-weight:600;cursor:pointer">${removeLabel}</button>
+          </div>
+        </div>`, { closeButton: false, offset: [0, -10] }
+      ).openPopup();
+    }
 
     // ── Region tabs ───────────────────────────────────────────────────────
     let selectedRegion = '';
