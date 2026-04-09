@@ -177,7 +177,7 @@
         card.classList.remove('hidden');
         // Link to full map page centred on this park
         document.getElementById('mini-map-link').href = `map.html?lat=${lat}&lng=${lng}`;
-        document.getElementById('nav-btn').innerHTML = renderNavButton(lat, lng, parkName(park));
+        document.getElementById('nav-btn').innerHTML = renderNavButton(lat, lng);
         // Init Leaflet (only once)
         if (!window._miniMapInit) {
           window._miniMapInit = true;

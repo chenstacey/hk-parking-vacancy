@@ -331,42 +331,49 @@ async function fetchMeters() {
   }).filter(r => r.lat && r.lng);
 }
 
-// ── Navigation links ─────────────────────────────────────────────────────
-function renderNavButton(lat, lng, name) {
-  const enc = encodeURIComponent(name || '');
-  const apple  = `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`;
-  const google = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-  const waze   = `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
-  return `
-    <div class="relative inline-block nav-btn-wrap">
-      <button onclick="toggleNavMenu(this)"
-        class="flex items-center gap-1.5 bg-blue-500 text-white text-xs font-semibold px-3 py-1.5 rounded-full active:bg-blue-600 transition-colors">
-        <span>◎</span><span>${getLang() === 'en' ? 'Navigate' : '導航'}</span>
-      </button>
-      <div class="nav-menu hidden absolute right-0 mt-1 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 w-40">
-        <a href="${apple}" target="_blank" class="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 border-b border-gray-50 active:bg-gray-50">
-          <span>🗺️</span> Apple Maps
-        </a>
-        <a href="${google}" target="_blank" class="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 border-b border-gray-50 active:bg-gray-50">
-          <span>🌐</span> Google Maps
-        </a>
-        <a href="${waze}" target="_blank" class="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 active:bg-gray-50">
-          <span>🚗</span> Waze
-        </a>
-      </div>
-    </div>`;
+// ── Navigation picker (bottom sheet) ─────────────────────────────────────
+function showNavPicker(lat, lng) {
+  let sheet = document.getElementById('nav-sheet');
+  if (!sheet) {
+    sheet = document.createElement('div');
+    sheet.id = 'nav-sheet';
+    sheet.innerHTML = `
+      <div id="nav-sheet-bg" onclick="closeNavPicker()"
+        style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9998"></div>
+      <div style="position:fixed;left:0;right:0;bottom:0;z-index:9999;background:white;border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom))">
+        <div style="width:36px;height:4px;background:#e5e7eb;border-radius:2px;margin:0 auto 16px"></div>
+        <p id="nav-sheet-title" style="font-size:13px;font-weight:700;color:#111;text-align:center;margin:0 0 14px"></p>
+        <div id="nav-sheet-btns" style="display:flex;flex-direction:column;gap:10px"></div>
+        <button onclick="closeNavPicker()" style="margin-top:12px;width:100%;padding:13px;background:#f3f4f6;border:none;border-radius:14px;font-size:14px;font-weight:600;color:#6b7280">${getLang()==='en'?'Cancel':'取消'}</button>
+      </div>`;
+    document.body.appendChild(sheet);
+  }
+  const apps = [
+    { label: 'Apple Maps', icon: '🗺️', url: `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d` },
+    { label: 'Google Maps', icon: '🌐', url: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}` },
+    { label: 'Waze', icon: '🚗', url: `https://waze.com/ul?ll=${lat},${lng}&navigate=yes` },
+    { label: getLang()==='en'?'Amap (高德)':'高德地圖', icon: '📍', url: `https://uri.amap.com/navigation?to=${lng},${lat}&mode=car&src=hk-parking` },
+  ];
+  document.getElementById('nav-sheet-title').textContent = getLang()==='en'?'Open in…':'選擇導航應用';
+  document.getElementById('nav-sheet-btns').innerHTML = apps.map(a =>
+    `<a href="${a.url}" target="_blank" onclick="closeNavPicker()"
+      style="display:flex;align-items:center;gap:12px;padding:13px 16px;background:#f9fafb;border-radius:14px;text-decoration:none;color:#111;font-size:14px;font-weight:600">
+      <span style="font-size:20px">${a.icon}</span>${a.label}
+    </a>`
+  ).join('');
+  sheet.style.display = 'block';
 }
 
-function toggleNavMenu(btn) {
-  const menu = btn.nextElementSibling;
-  menu.classList.toggle('hidden');
-  // Close when clicking outside
-  setTimeout(() => {
-    document.addEventListener('click', function close(e) {
-      if (!e.target.closest('.nav-btn-wrap')) { menu.classList.add('hidden'); }
-      document.removeEventListener('click', close);
-    });
-  }, 0);
+function closeNavPicker() {
+  const sheet = document.getElementById('nav-sheet');
+  if (sheet) sheet.style.display = 'none';
+}
+
+function renderNavButton(lat, lng) {
+  return `<button onclick="showNavPicker(${lat},${lng})"
+    class="flex items-center gap-1.5 bg-blue-500 text-white text-xs font-semibold px-3 py-1.5 rounded-full active:bg-blue-600 transition-colors">
+    <span>◎</span><span>${getLang()==='en'?'Navigate':'導航'}</span>
+  </button>`;
 }
 
 // ── Tab bar HTML (injected into each page) ────────────────────────────────

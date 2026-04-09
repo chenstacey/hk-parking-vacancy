@@ -238,7 +238,7 @@
           </div>
           <div style="padding:0 14px 12px;display:flex;gap:8px">
             <a href="detail.html?id=${park.park_id}" style="flex:1;text-align:center;background:#3b82f6;color:white;border-radius:10px;padding:7px;font-size:12px;font-weight:600;text-decoration:none">${t('viewDetails')}</a>
-            <a href="${/android/i.test(navigator.userAgent) ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}` : `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`}" target="_blank" style="flex:1;text-align:center;background:#f3f4f6;color:#374151;border-radius:10px;padding:7px;font-size:12px;font-weight:600;text-decoration:none">${getLang() === 'en' ? 'Navigate' : '導航'}</a>
+            <button onclick="showNavPicker(${lat},${lng})" style="flex:1;text-align:center;background:#f3f4f6;color:#374151;border:none;border-radius:10px;padding:7px;font-size:12px;font-weight:600;cursor:pointer">${getLang() === 'en' ? 'Navigate' : '導航'}</button>
           </div>
         </div>`;
     }
