@@ -352,16 +352,32 @@ function showNavPicker(lat, lng) {
     { label: 'Apple Maps', icon: '🗺️', url: `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d` },
     { label: 'Google Maps', icon: '🌐', url: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}` },
     { label: 'Waze', icon: '🚗', url: `https://waze.com/ul?ll=${lat},${lng}&navigate=yes` },
-    { label: getLang()==='en'?'Amap (高德)':'高德地圖', icon: '📍', url: `https://uri.amap.com/navigation?to=${lng},${lat}&mode=car&src=hk-parking` },
+    { label: getLang()==='en'?'Amap (高德)':'高德地圖', icon: '📍', onclick: `openAmap(${lat},${lng})` },
   ];
   document.getElementById('nav-sheet-title').textContent = getLang()==='en'?'Open in…':'選擇導航應用';
   document.getElementById('nav-sheet-btns').innerHTML = apps.map(a =>
-    `<a href="${a.url}" target="_blank" onclick="closeNavPicker()"
-      style="display:flex;align-items:center;gap:12px;padding:13px 16px;background:#f9fafb;border-radius:14px;text-decoration:none;color:#111;font-size:14px;font-weight:600">
-      <span style="font-size:20px">${a.icon}</span>${a.label}
-    </a>`
+    a.onclick
+      ? `<button onclick="closeNavPicker();${a.onclick}"
+          style="display:flex;align-items:center;gap:12px;padding:13px 16px;background:#f9fafb;border-radius:14px;color:#111;font-size:14px;font-weight:600;border:none;width:100%;cursor:pointer">
+          <span style="font-size:20px">${a.icon}</span>${a.label}
+        </button>`
+      : `<a href="${a.url}" target="_blank" onclick="closeNavPicker()"
+          style="display:flex;align-items:center;gap:12px;padding:13px 16px;background:#f9fafb;border-radius:14px;text-decoration:none;color:#111;font-size:14px;font-weight:600">
+          <span style="font-size:20px">${a.icon}</span>${a.label}
+        </a>`
   ).join('');
   sheet.style.display = 'block';
+}
+
+function openAmap(lat, lng) {
+  const isAndroid = /android/i.test(navigator.userAgent);
+  const appUrl = isAndroid
+    ? `androidamap://route/plan/?dlat=${lat}&dlon=${lng}&dname=&dev=0&t=0`
+    : `iosamap://path?dlat=${lat}&dlon=${lng}&dname=&dev=0&t=0`;
+  const webUrl = `https://uri.amap.com/navigation?to=${lng},${lat}&mode=car`;
+  // Try app first; fall back to web after 1.5s if app not installed
+  window.location.href = appUrl;
+  setTimeout(() => { window.open(webUrl, '_blank'); }, 1500);
 }
 
 function closeNavPicker() {
